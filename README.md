@@ -1,61 +1,121 @@
-# Nuances Parfums
+# Nuances Parfums — Plateforme E-commerce
 
-Application fullstack pour la parfumerie **Nuances Parfums** (Nabeul, Tunisie) : site vitrine e-commerce + ERP de gestion.
+Application fullstack Next.js 14 pour la gestion d'une parfumerie : vitrine publique + ERP interne.
 
-## Stack
+## Stack technique
 
-- **Frontend** : Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui
-- **Backend** : Next.js API Routes
-- **Base de données** : PostgreSQL + Prisma
-- **Auth** : NextAuth.js (credentials, JWT)
-- **Charts** : Recharts | **PDF** : @react-pdf/renderer | **Email** : Resend
+| Couche          | Technologie                          |
+|-----------------|--------------------------------------|
+| Framework       | Next.js 14 (App Router)              |
+| Langage         | TypeScript                           |
+| Base de données | PostgreSQL + Prisma ORM              |
+| Auth            | NextAuth.js (JWT + Credentials)      |
+| State           | Zustand (panier vitrine)             |
+| Styling         | Inline styles + palette gold / beige |
 
-## Démarrage
+## Structure du projet
 
-```bash
-# Copier l'environnement
-cp .env.example .env
-# Renseigner DATABASE_URL (PostgreSQL) et NEXTAUTH_SECRET
-
-# Installer les dépendances
-npm install
-
-# Créer la base et les tables
-npx prisma migrate dev --name init
-
-# (Optionnel) Données de test
-npm run db:seed
-
-# Lancer le dev
-npm run dev
+```
+parfumerie/
+├── src/
+│   ├── app/
+│   │   ├── (public)/          # Vitrine : accueil, boutique, commande, etc.
+│   │   ├── (erp)/             # ERP : layout + pages /erp/*
+│   │   ├── api/               # Routes API REST
+│   │   ├── layout.tsx
+│   │   └── globals.css
+│   ├── components/
+│   │   ├── ui/                # Primitives (button, dialog, Badge, …)
+│   │   ├── vitrine/           # Navbar, CartDrawer, ProductCard, …
+│   │   └── erp/               # ErpPage, Sidebar, ProduitForm, …
+│   ├── lib/                   # prisma, auth, utils, validations
+│   ├── hooks/                 # useAnimateOnScroll, …
+│   ├── store/                 # cart-store (Zustand)
+│   └── types/                 # Types métier partagés
+├── prisma/
+│   ├── schema.prisma
+│   └── seed.ts
+├── public/
+├── docs/
+│   ├── API.md
+│   └── DEPLOYMENT.md
+├── src/middleware.ts          # Protection /erp/* + rôle VENDEUR
+├── next.config.js
+├── tsconfig.json
+└── package.json
 ```
 
-Ouvrir [http://localhost:3000](http://localhost:3000).
+## Comptes de test
 
-- **Site public** : `/`, `/boutique`, `/commande`, etc.
-- **ERP** : [http://localhost:3000/erp/dashboard](http://localhost:3000/erp/dashboard)
-- **Connexion ERP** : [http://localhost:3000/login](http://localhost:3000/login)  
-  (après seed : `admin@nuances.tn` / `admin123`)
+| Rôle    | Email              | Mot de passe |
+|---------|--------------------|--------------|
+| Admin   | admin@nuances.tn   | admin123     |
+| Vendeur | vendeur@nuances.tn | vendeur123   |
 
-## Variables d'environnement
+## Accès par rôle
 
-Voir `.env.example`. Obligatoires : `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`.  
-Optionnel : Resend (emails), Uploadthing (images produits).
+| Page                 | Admin | Vendeur |
+|----------------------|-------|---------|
+| /erp/dashboard       | ✅    | ❌ (redirect vente-place) |
+| /erp/commandes       | ✅    | ❌      |
+| /erp/vente-place     | ✅    | ✅      |
+| /erp/clients         | ✅    | ❌      |
+| /erp/produits        | ✅    | ❌      |
+| /erp/stock           | ✅    | ❌      |
+| /erp/exclusivites    | ✅    | ❌      |
+| /erp/finances        | ✅    | ❌      |
 
-## Scripts
+Le middleware et la page dashboard redirigent le rôle **VENDEUR** vers `/erp/vente-place` s'il tente d'ouvrir une autre route ERP.
 
-- `npm run dev` — serveur de développement
-- `npm run build` / `npm run start` — production
-- `npm run db:migrate` — migrations Prisma
-- `npm run db:seed` — seed (admin + catégories + produits + clients + commandes)
-- `npm run db:studio` — Prisma Studio
+## Fonctionnalités vitrine
 
-## Structure
+- Accueil : hero, bestsellers, exclusivités, suivi de commande, CTA
+- Boutique : grille produits, filtres catégorie, badges (nouveauté, exclusif, offre)
+- Fiche produit : tailles, prix, ajout panier
+- Tunnel commande + confirmation avec numéro
+- API publique `GET /api/commandes/suivi?numero=…`
 
-- `app/(public)/` — pages site vitrine
-- `app/(erp)/` — pages dashboard ERP (protégées)
-- `app/api/` — routes API REST
-- `components/vitrine/` — composants site public
-- `components/erp/` — composants ERP
-- `lib/` — Prisma, auth, utils, validations
-- `prisma/` — schéma et seed
+## Fonctionnalités ERP
+
+- Dashboard (KPI, canaux vente site / boutique)
+- Commandes : liste, détail, mise à jour statut / notes
+- Vente sur place (caisse)
+- Clients, produits (CRUD, images), exclusivités / offres
+- Stock : mouvements entrée / sortie / ajustement, volumétrie
+- Finances et factures (PDF HTML)
+
+## API produits (GET)
+
+Paramètres supportés : `limit`, `featured`, `exclusif`, `nouveaute`, `offre`, `actif`, `search` (ou `q`), `categorieId`.  
+Réponse triée par `featured` desc puis `createdAt` desc.
+
+## Protection API (mutations)
+
+Les routes `POST` / `PATCH` / `PUT` / `DELETE` sensibles vérifient la session NextAuth.  
+Le rôle **VENDEUR** reçoit `403 Accès interdit` sur les opérations réservées (produits, clients, stock, etc.).  
+La création de commande publique reste sur `POST /api/commandes` sans session ERP.
+
+> **Note :** `src/app/api/factures/route.ts` n'expose pour l'instant que `GET` (pas de `POST`).
+
+## Base de données (aperçu)
+
+Modèles principaux (détail dans `prisma/schema.prisma`) : `User`, `Categorie`, `Produit`, `Stock`, `StockKilo`, `MouvementStock`, `Client`, `Commande`, `LigneCommande`, `Livraison`, `Facture`.
+
+## Commandes utiles
+
+```bash
+npm install
+npm run dev              # http://localhost:3000
+npm run build
+npm run start
+npm run db:push          # synchroniser le schéma
+npm run db:seed          # données de démo
+npx prisma studio        # exploration DB
+```
+
+Variables d'environnement : voir `.env.example` et `docs/DEPLOYMENT.md`.
+
+## Documentation complémentaire
+
+- [docs/API.md](docs/API.md) — endpoints
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — déploiement
