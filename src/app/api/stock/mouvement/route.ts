@@ -3,17 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { envoyerAlerteStock } from "@/lib/email";
-
-const TAILLE_ML: Record<string, number> = {
-  "1ml": 1,
-  "2ml": 2,
-  "5ml": 5,
-  "10ml": 10,
-  "15ml": 15,
-  "30ml": 30,
-  "50ml": 50,
-  "100ml": 100,
-};
+import { TAILLE_ML } from "@/types";
 
 export async function POST(req: Request) {
   try {

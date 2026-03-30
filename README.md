@@ -39,7 +39,7 @@ parfumerie/
 ├── docs/
 │   ├── API.md
 │   └── DEPLOYMENT.md
-├── src/middleware.ts          # Protection /erp/* + rôle VENDEUR
+├── middleware.ts              # Protection /erp/* + rôle VENDEUR
 ├── next.config.js
 ├── tsconfig.json
 └── package.json
@@ -70,10 +70,12 @@ Le middleware et la page dashboard redirigent le rôle **VENDEUR** vers `/erp/ve
 ## Fonctionnalités vitrine
 
 - Accueil : hero, bestsellers, exclusivités, suivi de commande, CTA
+- Footer contact enrichi : Instagram, Facebook, Google Maps, téléphone + mini-carte
 - Boutique : grille produits, filtres catégorie, badges (nouveauté, exclusif, offre)
 - Fiche produit : tailles, prix, ajout panier
 - Tunnel commande + confirmation avec numéro
 - API publique `GET /api/commandes/suivi?numero=…`
+- Panier persistant via Zustand (`localStorage`)
 
 ## Fonctionnalités ERP
 
@@ -96,6 +98,25 @@ Le rôle **VENDEUR** reçoit `403 Accès interdit` sur les opérations réservé
 La création de commande publique reste sur `POST /api/commandes` sans session ERP.
 
 > **Note :** `src/app/api/factures/route.ts` n'expose pour l'instant que `GET` (pas de `POST`).
+
+## Sécurité et robustesse
+
+- Rate limit en mémoire par IP (`src/lib/rateLimit.ts`)
+  - `POST /api/commandes` : 20 requêtes / minute
+  - `POST /api/chatbot` : 10 requêtes / minute
+- Headers HTTP de sécurité dans `next.config.js` :
+  - `X-DNS-Prefetch-Control`, `X-Frame-Options`, `X-Content-Type-Options`
+  - `Referrer-Policy`, `Permissions-Policy`
+- `NEXTAUTH_SECRET` requis dans l'environnement
+- `middleware.ts` à la racine (protection ERP)
+
+## Qualité UX / rendering
+
+- Pages globales App Router :
+  - `src/app/error.tsx`
+  - `src/app/not-found.tsx`
+  - `src/app/loading.tsx`
+- Routes API dynamiques marquées `force-dynamic` sur les endpoints qui utilisent `request.url` / `searchParams` (commandes, suivi, stock alertes, volumétrie)
 
 ## Base de données (aperçu)
 

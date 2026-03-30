@@ -1,62 +1,57 @@
-/**
- * @module AlertesStock
- * @description Vérifie les stocks bas et envoie une alerte email
- * Peut être appelé par un cron job ou manuellement depuis l'ERP
- */
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import prisma from "@/lib/prisma";
-import { envoyerAlerteStock } from "@/lib/email";
+export const dynamic = 'force-dynamic'
 
-export const dynamic = "force-dynamic";
+import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import prisma from '@/lib/prisma'
+import { envoyerAlerteStock } from '@/lib/email'
 
 export async function GET(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const cronKey = searchParams.get("key");
-    const isCron = cronKey && process.env.CRON_SECRET_KEY && cronKey === process.env.CRON_SECRET_KEY;
+    const { searchParams } = new URL(req.url)
+    const cronKey = searchParams.get('key')
+    const isCron  = cronKey === process.env.CRON_SECRET_KEY
 
     if (!isCron) {
-      const session = await getServerSession(authOptions);
+      const session = await getServerSession(authOptions)
       if (!session) {
-        return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+        return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
       }
     }
 
-    const stocksEnAlerte = await prisma.stock.findMany({
+    const stocks = await prisma.stock.findMany({
       include: {
-        produit: { select: { nom: true, actif: true } },
-      },
-    });
+        produit: { select: { nom: true, actif: true } }
+      }
+    })
 
-    const alertes = stocksEnAlerte
-      .filter((s) => s.produit.actif && s.quantite <= s.seuilAlerte)
-      .map((s) => ({
-        produitNom: s.produit.nom,
-        taille: s.taille,
-        quantite: s.quantite,
+    const alertes = stocks
+      .filter(s => s.produit.actif && s.quantite <= s.seuilAlerte)
+      .map(s => ({
+        produitNom:  s.produit.nom,
+        taille:      s.taille,
+        quantite:    s.quantite,
         seuilAlerte: s.seuilAlerte,
-      }));
+      }))
 
     if (alertes.length === 0) {
       return NextResponse.json({
-        message: "Aucune alerte stock",
+        message: 'Aucune alerte stock',
         alertes: [],
         emailEnvoye: false,
-      });
+      })
     }
 
-    const emailResult = await envoyerAlerteStock(alertes);
+    const emailResult = await envoyerAlerteStock(alertes)
 
     return NextResponse.json({
-      message: `${alertes.length} alerte${alertes.length > 1 ? "s" : ""} trouvée${alertes.length > 1 ? "s" : ""}`,
+      message: `${alertes.length} alerte${alertes.length > 1 ? 's' : ''} trouvée${alertes.length > 1 ? 's' : ''}`,
       emailEnvoye: emailResult.success,
       alertes,
-    });
+    })
   } catch (error: unknown) {
-    const err = error as Error;
-    console.error("[GET /api/stock/alertes]", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    const err = error as Error
+    console.error('[GET /api/stock/alertes]', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

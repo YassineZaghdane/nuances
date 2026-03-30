@@ -1,59 +1,96 @@
-import { NextRequest } from "next/server";
+/**
+ * @module API Commandes
+ * @description Création et liste des commandes
+ * GET  : liste (auth requise)
+ * POST : création (public)
+ */
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { genererNumeroCommande } from "@/lib/order-numbers";
 import { envoyerConfirmationCommande } from "@/lib/email";
 import { Prisma } from "@prisma/client";
+import { rateLimit } from "@/lib/rateLimit";
+import { TAILLE_ML } from "@/types";
 
-const TAILLE_ML: Record<string, number> = {
-  "1ml": 1, "2ml": 2, "5ml": 5, "10ml": 10,
-  "15ml": 15, "30ml": 30, "50ml": 50, "100ml": 100, "200ml": 200,
-};
+export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) return Response.json({ error: "Non autorisé" }, { status: 401 });
+export async function GET(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+    }
 
-  const { searchParams } = new URL(request.url);
-  const statut = searchParams.get("statut");
-  const ville = searchParams.get("ville");
-  const q = searchParams.get("q");
-  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-  const limit = Math.min(50, Math.max(10, parseInt(searchParams.get("limit") || "20", 10)));
-  const offset = (page - 1) * limit;
+    const { searchParams } = new URL(req.url);
+    const pageRaw = parseInt(searchParams.get("page") || "1", 10);
+    const limitRaw = parseInt(searchParams.get("limit") || "20", 10);
+    const page = Math.max(1, Number.isFinite(pageRaw) ? pageRaw : 1);
+    const limit = Math.min(
+      50,
+      Math.max(1, Number.isFinite(limitRaw) ? limitRaw : 20)
+    );
+    const statut = searchParams.get("statut");
+    const search = (
+      searchParams.get("search") ||
+      searchParams.get("q") ||
+      ""
+    ).trim();
+    const ville = searchParams.get("ville");
 
-  const where: Prisma.CommandeWhereInput = {};
-  if (statut) where.statut = statut as Prisma.CommandeWhereInput["statut"];
-  if (ville) where.villeLivraison = ville;
-  if (q?.trim()) {
-    where.OR = [
-      { numero: { contains: q.trim(), mode: "insensitive" } },
-      { client: { nom: { contains: q.trim(), mode: "insensitive" } } },
-    ];
+    const where: Prisma.CommandeWhereInput = {};
+    if (statut && statut !== "Tous") {
+      where.statut = statut as Prisma.CommandeWhereInput["statut"];
+    }
+    if (ville) where.villeLivraison = ville;
+    if (search) {
+      where.OR = [
+        { numero: { contains: search, mode: "insensitive" } },
+        { client: { nom: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    const [commandes, total] = await Promise.all([
+      prisma.commande.findMany({
+        where,
+        include: {
+          client: { select: { nom: true, telephone: true } },
+          lignes: { select: { quantite: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.commande.count({ where }),
+    ]);
+
+    const serialized = commandes.map((c) => ({
+      ...c,
+      montantTotal: Number(c.montantTotal),
+      fraisLivraison: Number(c.fraisLivraison),
+    }));
+
+    return NextResponse.json({ commandes: serialized, total });
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("[GET /api/commandes]", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
-
-  const [commandes, total] = await Promise.all([
-    prisma.commande.findMany({
-      where,
-      include: { client: true, lignes: { select: { quantite: true } } },
-      orderBy: { createdAt: "desc" },
-      skip: offset,
-      take: limit,
-    }),
-    prisma.commande.count({ where }),
-  ]);
-
-  const serialized = commandes.map((c) => ({
-    ...c,
-    montantTotal: Number(c.montantTotal),
-    fraisLivraison: Number(c.fraisLivraison),
-  }));
-
-  return Response.json({ data: serialized, total, page, limit });
 }
 
 export async function POST(request: NextRequest) {
+  const ip =
+    request.headers.get("x-forwarded-for") ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+  if (!rateLimit(ip, 20, 60000)) {
+    return NextResponse.json(
+      { error: "Trop de requêtes. Réessayez dans une minute." },
+      { status: 429 }
+    );
+  }
+
   const body = await request.json();
   const client = body.client as { nom: string; telephone: string; email?: string; adresse?: string; ville?: string } | undefined;
   const lignes = Array.isArray(body.lignes) ? body.lignes : [];

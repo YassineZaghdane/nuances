@@ -1,35 +1,40 @@
-/**
- * @module Chatbot
- * @description Conseiller parfum IA via Claude API
- */
-import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-import prisma from "@/lib/prisma";
+import { NextResponse } from 'next/server'
+import Anthropic from '@anthropic-ai/sdk'
+import prisma from '@/lib/prisma'
+import { rateLimit } from '@/lib/rateLimit'
 
-export const dynamic = "force-dynamic";
-
-const MODEL =
-  process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022";
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY || '',
+})
 
 export async function POST(req: Request) {
-  try {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return NextResponse.json(
-        { error: "Service conseiller indisponible (clé API manquante)." },
-        { status: 503 }
-      );
-    }
+  const ip =
+    req.headers.get('x-forwarded-for') ||
+    req.headers.get('x-real-ip') ||
+    'unknown'
+  if (!rateLimit(ip, 10, 60000)) {
+    return NextResponse.json(
+      { message: 'Trop de messages. Patientez une minute.' },
+      { status: 429 }
+    )
+  }
 
-    const body = await req.json();
-    const { messages } = body as {
-      messages?: Array<{ role: string; content: string }>;
-    };
+  try {
+    const body = await req.json()
+    const { messages } = body
 
     if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error: "Messages requis" }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Messages requis' },
+        { status: 400 }
+      )
     }
 
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json(
+        { message: 'Bonjour ! Je suis Nour, votre conseillère parfum. Comment puis-je vous aider ?' },
+      )
+    }
 
     const produits = await prisma.produit.findMany({
       where: { actif: true },
@@ -43,82 +48,72 @@ export async function POST(req: Request) {
         categorie: { select: { nom: true } },
         stocks: {
           where: { quantite: { gt: 0 } },
-          select: { taille: true, quantite: true },
-        },
+          select: { taille: true }
+        }
       },
-      orderBy: { featured: "desc" },
-    });
+      orderBy: { featured: 'desc' },
+      take: 30,
+    })
 
-    const catalogueTexte = produits
-      .map((p) => {
-        const tailles = p.stocks.map((s) => s.taille).join(", ");
-        return `- ${p.nom} (${p.categorie?.nom || "Parfum"}): ${p.notes || ""} ${p.description || ""} | Prix: dès ${Number(p.prix).toFixed(0)} DT | Formats: ${tailles || "Non disponible"}${p.exclusif ? " | EXCLUSIF" : ""}${p.nouveaute ? " | NOUVEAUTÉ" : ""}`;
+    const catalogue = produits
+      .filter(p => p.stocks.length > 0)
+      .map(p => {
+        const tailles = p.stocks.map(s => s.taille).join(', ')
+        const tags = [
+          p.exclusif  ? 'EXCLUSIF'  : '',
+          p.nouveaute ? 'NOUVEAUTÉ' : '',
+        ].filter(Boolean).join(', ')
+        return `• ${p.nom} | ${p.notes || ''} | Dès ${Number(p.prix).toFixed(0)} DT | Formats: ${tailles}${tags ? ` | ${tags}` : ''}`
       })
-      .join("\n");
+      .join('\n')
 
-    const systemPrompt = `Tu es Nour, la conseillère parfum virtuelle de Nuances Parfums, une parfumerie de luxe basée à Nabeul, Tunisie.
+    const systemPrompt = `Tu es Nour, conseillère parfum virtuelle de Nuances Parfums, parfumerie de luxe à Nabeul, Tunisie.
 
-TON RÔLE :
-Tu aides les clients à trouver leur parfum idéal en leur posant des questions intelligentes sur leurs préférences olfactives, leur style de vie et leurs habitudes.
+TON RÔLE : Aider les clients à trouver leur fragrance idéale.
 
 TON STYLE :
 - Chaleureux, expert, élégant
-- Tu parles en français
-- Tu poses UNE question à la fois pour ne pas submerger le client
-- Tu es enthousiaste à propos des parfums
-- Tu utilises des métaphores poétiques pour décrire les senteurs
+- UNE question à la fois maximum
+- Réponses courtes (2-3 phrases max)
+- Utilise des métaphores poétiques pour les senteurs
 
-CATALOGUE ACTUEL (stock disponible) :
-${catalogueTexte}
+CATALOGUE DISPONIBLE :
+${catalogue}
 
-PROCESSUS DE CONSEIL :
-1. Accueille chaleureusement le client
-2. Demande s'il cherche un parfum pour lui/elle ou un cadeau
-3. Demande ses préférences (frais/oriental/floral/boisé/épicé)
-4. Demande l'occasion (quotidien/soirée/bureau/sport)
-5. Demande sa sensibilité au prix (budget)
-6. Recommande 2-3 parfums maximum avec une explication poétique
-7. Propose de commander ou de demander des échantillons
+PROCESSUS :
+1. Accueil chaleureux
+2. Pour soi ou cadeau ?
+3. Préférences olfactives (frais/oriental/floral/boisé/épicé)
+4. Occasion (quotidien/soirée/bureau)
+5. Budget approximatif
+6. Recommande 2-3 parfums maximum
+7. Oriente vers /boutique pour commander
 
-RÈGLES IMPORTANTES :
-- Ne recommande QUE des produits du catalogue ci-dessus
-- Si un parfum est en rupture (pas de stocks), ne le recommande pas
+RÈGLES :
+- Recommande UNIQUEMENT les produits du catalogue ci-dessus
 - Reste focalisé sur le conseil parfum
-- Si le client veut commander, dis-lui de se rendre sur /boutique
-- Tu peux mentionner les prix mais reste élégant
-- Maximum 3 phrases par réponse pour rester concis`;
+- Si commande souhaitée → rediriger vers /boutique`
 
-    const claudeMessages = messages
-      .filter((m) => m.role === "user" || m.role === "assistant")
-      .map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      }));
-
-    if (claudeMessages.length === 0) {
-      return NextResponse.json({ error: "Aucun message valide" }, { status: 400 });
-    }
-
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 500,
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
       system: systemPrompt,
-      messages: claudeMessages,
-    });
+      messages: messages.map((m: { role: string; content: string }) => ({
+        role:    m.role    as 'user' | 'assistant',
+        content: m.content as string,
+      })),
+    })
 
-    const first = response.content[0];
-    const assistantMessage =
-      first && first.type === "text" ? first.text : "";
+    const text = response.content[0].type === 'text'
+      ? response.content[0].text
+      : 'Je n\'ai pas pu répondre. Réessayez.'
 
-    return NextResponse.json({
-      message: assistantMessage,
-      usage: response.usage,
-    });
+    return NextResponse.json({ message: text })
   } catch (error: unknown) {
-    console.error("[POST /api/chatbot]", error);
+    console.error('[POST /api/chatbot]', error)
     return NextResponse.json(
-      { error: "Erreur du conseiller. Réessayez." },
+      { message: 'Une erreur est survenue. Réessayez dans un instant.' },
       { status: 500 }
-    );
+    )
   }
 }
