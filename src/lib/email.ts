@@ -50,34 +50,41 @@ export async function envoyerConfirmationCommande(data: {
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
-<head><meta charset="UTF-8"/></head>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+</head>
 <body style="margin:0;padding:0;background:#F5EFE0;font-family:Georgia,serif">
-<div style="max-width:600px;margin:40px auto;background:white;border:1px solid #EDE5D4">
+<div style="max-width:640px;margin:32px auto;background:white;border:1px solid #EDE5D4">
 
-  <div style="background:#1A1208;padding:40px;text-align:center">
+  <div style="background:linear-gradient(145deg,#120E08 0%,#1A1208 60%,#2B1D10 100%);padding:38px 28px;text-align:center">
     <div style="font-size:26px;letter-spacing:8px;color:white;text-transform:uppercase">
       ✿ NUANCES
     </div>
     <div style="font-size:11px;letter-spacing:4px;color:#C4960A;margin-top:4px;
                 text-transform:uppercase">— PARFUMS —</div>
+    <div style="margin-top:16px;font-size:12px;color:rgba(255,255,255,0.65);line-height:1.7">
+      Votre commande est bien enregistrée.<br/>
+      Merci pour votre confiance.
+    </div>
   </div>
 
-  <div style="padding:40px">
-    <h1 style="font-size:22px;font-weight:300;color:#1A1208;margin-bottom:8px">
+  <div style="padding:34px 34px 18px">
+    <h1 style="font-size:24px;font-weight:300;color:#1A1208;margin:0 0 8px">
       Commande confirmée ✓
     </h1>
-    <p style="font-size:14px;color:#8A7B68;margin-bottom:28px">
+    <p style="font-size:14px;color:#8A7B68;margin:0 0 26px">
       Bonjour ${data.clientNom}, votre commande a bien été reçue.
     </p>
 
     <div style="background:#FFF8E6;border:1px solid rgba(196,150,10,0.2);
-                padding:16px 20px;margin-bottom:28px;display:inline-block">
+                padding:16px 20px;margin-bottom:24px;display:inline-block">
       <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;
                   color:#8A7B68;margin-bottom:4px">Numéro de commande</div>
       <div style="font-size:22px;color:#C4960A;font-weight:bold">${data.numero}</div>
     </div>
 
-    <table style="width:100%;border-collapse:collapse;margin-bottom:24px">
+    <table style="width:100%;border-collapse:collapse;margin-bottom:20px;border:1px solid #EFE7D7">
       <thead>
         <tr style="background:#FAF7F2">
           <th style="padding:10px 14px;text-align:left;font-size:10px;
@@ -93,7 +100,7 @@ export async function envoyerConfirmationCommande(data: {
       <tbody>${lignesHTML}</tbody>
     </table>
 
-    <div style="border-top:2px solid #EDE5D4;padding-top:16px;margin-bottom:28px">
+    <div style="border-top:2px solid #EDE5D4;padding-top:16px;margin-bottom:24px">
       <div style="display:flex;justify-content:space-between;
                   margin-bottom:8px;font-size:13px;color:#8A7B68">
         <span>Sous-total</span>
@@ -112,7 +119,7 @@ export async function envoyerConfirmationCommande(data: {
     </div>
 
     ${data.adresseLivraison ? `
-    <div style="background:#FAF7F2;padding:16px 20px;margin-bottom:24px">
+    <div style="background:#FAF7F2;padding:16px 20px;margin-bottom:20px;border:1px solid #EFE7D7">
       <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;
                   color:#8A7B68;margin-bottom:8px">Livraison</div>
       <div style="font-size:13px;color:#1A1208;line-height:1.6">
@@ -121,7 +128,7 @@ export async function envoyerConfirmationCommande(data: {
       </div>
     </div>` : ''}
 
-    <p style="font-size:13px;color:#8A7B68;line-height:1.8;margin-bottom:24px">
+    <p style="font-size:13px;color:#8A7B68;line-height:1.8;margin-bottom:20px">
       Notre équipe vous contactera sous 24h pour organiser la livraison.
       Suivez votre commande avec le numéro
       <strong style="color:#C4960A">${data.numero}</strong>.
@@ -129,9 +136,9 @@ export async function envoyerConfirmationCommande(data: {
 
     <div style="text-align:center;margin-bottom:24px">
       <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}?suivi=${data.numero}"
-         style="display:inline-block;background:#1A1208;color:white;
+         style="display:inline-block;background:#1A1208;color:white;border:1px solid #1A1208;
                 padding:14px 32px;font-size:12px;letter-spacing:3px;
-                text-transform:uppercase;text-decoration:none">
+                text-transform:uppercase;text-decoration:none;box-shadow:0 8px 22px rgba(26,18,8,0.2)">
         Suivre ma commande
       </a>
     </div>
@@ -161,6 +168,25 @@ export async function envoyerConfirmationCommande(data: {
 </body>
 </html>`
 
+  const text = [
+    `Commande confirmée - ${data.numero}`,
+    ``,
+    `Bonjour ${data.clientNom},`,
+    `Votre commande a bien été reçue par Nuances Parfums.`,
+    ``,
+    `Produits:`,
+    ...data.lignes.map((l) => `- ${l.nom} (${l.taille}) x${l.quantite} : ${(l.prixUnitaire * l.quantite).toFixed(0)} DT`),
+    ``,
+    `Total: ${data.montantTotal.toFixed(0)} DT`,
+    `Livraison: ${Number(data.fraisLivraison).toFixed(0)} DT`,
+    data.adresseLivraison ? `Adresse: ${data.adresseLivraison}${data.villeLivraison ? `, ${data.villeLivraison}` : ''}` : '',
+    ``,
+    `Suivi: ${(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')}?suivi=${data.numero}`,
+    `Contact: +216 96 557 557`,
+    `Instagram: https://www.instagram.com/nuances.parfums/`,
+    `Facebook: https://www.facebook.com/profile.php?id=61584307961028`,
+  ].filter(Boolean).join('\n')
+
   try {
     const resend = getResend()
     if (!resend) {
@@ -176,6 +202,7 @@ export async function envoyerConfirmationCommande(data: {
       to: recipients,
       subject: `✓ Commande ${data.numero} — Nuances Parfums`,
       html,
+      text,
     })
     return { success: true, id: result.data?.id }
   } catch (error) {
