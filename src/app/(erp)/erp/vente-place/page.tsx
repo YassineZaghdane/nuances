@@ -16,7 +16,7 @@ export default function VentePlacePage() {
   const [panier, setPanier] = useState<LignePanier[]>([])
   const [search, setSearch] = useState('')
   const [client, setClient] = useState({ nom: '', telephone: '' })
-  const [paiement, setPaiement] = useState('ESPECES')
+  const [paiement, setPaiement] = useState('CASH')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
 
@@ -66,7 +66,7 @@ export default function VentePlacePage() {
             prixUnitaire: l.prix,
           })),
           source: 'BOUTIQUE',
-          modePaiement: paiement === 'ESPECES' ? 'PAIEMENT_LIVRAISON' : 'VIREMENT',
+          modePaiement: paiement,
           fraisLivraison: 0,
           montantTotal: total,
           statut: 'LIVREE',
@@ -233,7 +233,7 @@ export default function VentePlacePage() {
             <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C4B090', marginBottom: '0.8rem' }}>Mode de paiement</div>
             <div style={{ display: 'flex', gap: '0.4rem' }}>
               {[
-                { val: 'ESPECES', label: '💵 Espèces' },
+                { val: 'CASH', label: '💵 Espèces / Cash' },
                 { val: 'VIREMENT', label: '🏦 Virement' },
               ].map(opt => (
                 <button key={opt.val} type="button" onClick={() => setPaiement(opt.val)} style={{
