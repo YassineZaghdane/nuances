@@ -89,6 +89,7 @@ const STATUT_LABELS: Record<string,{label:string;color:string}> = {
 }
 
 export default function HomePage() {
+  const [isMobile, setIsMobile] = useState(false)
   const [productos, setProductos] = useState<Array<{id:string,nom:string,slug:string,notes?:string,prix:number,featured:boolean}>>([])
   const [exclusifs, setExclusifs] = useState<Array<{id:string,nom:string,slug:string,notes?:string,prix:number}>>([])
   const [suiviNumero, setSuiviNumero] = useState('')
@@ -102,6 +103,13 @@ export default function HomePage() {
     createdAt: string
     lignes?: Array<{ taille: string; quantite: number; prixUnitaire: number; produit?: { nom: string } | null }>
   }>(null)
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 900)
+    onResize()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   useEffect(() => {
     fetch('/api/produits?featured=true&limit=3')
@@ -137,7 +145,7 @@ export default function HomePage() {
         {/* ════ HERO ════ */}
         <section style={{
           minHeight:'100vh', display:'grid',
-          gridTemplateColumns:'52% 48%', paddingTop:'76px', overflow:'hidden'
+          gridTemplateColumns: isMobile ? '1fr' : '52% 48%', paddingTop:'76px', overflow:'hidden'
         }}>
           {/* Gauche sombre */}
           <div style={{
@@ -255,7 +263,7 @@ export default function HomePage() {
             </div>
           </Reveal>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', maxWidth:'820px', margin:'0 auto' }}>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:'1.5rem', maxWidth:'820px', margin:'0 auto' }}>
             {[
               { titre:'Classiques', sub:'Élégants · Intemporels · Accessibles', dark:false, items:[['30 ML','20 DT'],['50 ML','30 DT'],['100 ML','50 DT']], slogan:"L'élégance au quotidien." },
               { titre:'Niche', sub:'Collection Privée · Raffinés · Intenses', dark:true, items:[['30 ML','30 DT'],['50 ML','50 DT'],['100 ML','100 DT']], slogan:"L'élégance sur mesure." },
@@ -294,7 +302,7 @@ export default function HomePage() {
             </div>
           </Reveal>
 
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1.5rem' }}>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:'1.5rem' }}>
             {productos.length === 0 ? (
               [...Array(3)].map((_,i) => (
                 <div key={i} style={{ height:'400px', background:'linear-gradient(90deg,#EDE5D4,#F5EFE0,#EDE5D4)', backgroundSize:'200%', animation:'shimmer 1.5s infinite' }}/>
@@ -367,7 +375,7 @@ export default function HomePage() {
         )}
 
         {/* ════ BANNIÈRE SOL DE JANEIRO ════ */}
-        <section style={{ position:'relative', minHeight:'520px', display:'grid', gridTemplateColumns:'1fr 1fr', overflow:'hidden' }}>
+        <section style={{ position:'relative', minHeight:'520px', display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', overflow:'hidden' }}>
           {/* Visuel coloré gauche */}
           <div style={{
             background:'linear-gradient(140deg,#1A0A2E 0%,#3D1050 40%,#7A1545 70%,#C42048 100%)',
@@ -408,10 +416,10 @@ export default function HomePage() {
         </section>
 
         {/* ════ MAISONS DE LUXE ════ */}
-        <section style={{ display:'grid', gridTemplateColumns:'1fr 1fr', background:'#F5EFE0', minHeight:'540px' }}>
+        <section style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', background:'#F5EFE0', minHeight:'540px' }}>
           {/* Visuel flacons */}
           <div style={{ background:'linear-gradient(160deg,#D4B896,#C4960A15)', display:'flex', alignItems:'center', justifyContent:'center', padding:'8%', position:'relative' }}>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.2rem', position:'relative', zIndex:2 }}>
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr', gap:'1.2rem', position:'relative', zIndex:2 }}>
               {[{m:'GIVENCHY',n:'Irrésistible',c:'#E8D5C0'},{m:'CHANEL',n:'Gabrielle',c:'#F0E6D8'},{m:'DIOR',n:'Hypnotique',c:'#DDD0BE'},{m:'ARMANI',n:'My Way',c:'#E8D0B8'}].map((f,i)=>(
                 <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'3px', animation:`float ${4+i*0.5}s ease-in-out ${i*0.25}s infinite` }}>
                   <div style={{ width:'48px', height:'72px', background:`linear-gradient(160deg,rgba(255,255,255,0.65),${f.c})`, borderRadius:'5px 5px 9px 9px', boxShadow:'3px 7px 18px rgba(139,105,20,0.18), inset 2px 0 7px rgba(255,255,255,0.45)', border:'1px solid rgba(139,105,20,0.1)', position:'relative', overflow:'hidden' }}>
@@ -454,7 +462,7 @@ export default function HomePage() {
               <h2 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'clamp(2rem,3.5vw,3rem)', fontWeight:300, color:'white' }}>Ce que nos clients disent</h2>
             </div>
           </Reveal>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'1.5rem' }}>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:'1.5rem' }}>
             {[
               { t:'"Qualité incroyable, parfum qui tient toute la journée. Je ne commande plus ailleurs."', n:'Sahar H.', v:'Tunis' },
               { t:'"Produits authentiques, livraison rapide. Équipe très professionnelle."', n:'Safa O.', v:'Sousse' },
@@ -569,7 +577,7 @@ export default function HomePage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "2fr 1fr 1fr",
+              gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr 1fr",
               gap: "4rem",
               paddingBottom: "4rem",
               borderBottom: "1px solid rgba(255,255,255,0.07)",
@@ -654,21 +662,19 @@ export default function HomePage() {
               <div
                 style={{
                   marginTop: "0.9rem",
-                  maxWidth: "520px",
-                  marginLeft: "auto",
-                  marginRight: "auto",
+                  width: "100%",
                   border: "1px solid rgba(196,150,10,0.2)",
                   borderRadius: "12px",
                   overflow: "hidden",
                   boxShadow: "0 16px 40px rgba(26,18,8,0.12)",
-                  background: "#FAF7F2",
+                  background: "#ffffff",
                 }}
               >
                 <iframe
                   title="Nuances Parfums - Google Maps"
-                  src="https://www.google.com/maps?q=Nuances+Parfums+Nabeul&z=16&output=embed"
+                  src="https://maps.google.com/maps?q=Nuances%20Parfums%20Nabeul&t=&z=16&ie=UTF8&iwloc=&output=embed"
                   width="100%"
-                  height="110"
+                  height="220"
                   style={{ border: 0, display: "block" }}
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
