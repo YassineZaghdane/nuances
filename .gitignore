@@ -1,0 +1,12 @@
+.next/
+out/
+node_modules/
+.env
+.env.local
+*-backup*/
+*.backup
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
+prisma/migrations/
