@@ -19,6 +19,7 @@ const MENU_COMPLET: MenuSection[] = [
       { href: '/erp/commandes',        label: 'Commandes',     icon: '▪', alert: true },
       { href: '/erp/vente-place',      label: 'Vente sur place', icon: '▪' },
       { href: '/erp/clients',          label: 'Clients',       icon: '▪' },
+      { href: '/erp/parametres',       label: 'Paramètres',    icon: '▪' },
     ]
   },
   {
