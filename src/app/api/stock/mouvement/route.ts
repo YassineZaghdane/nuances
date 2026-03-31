@@ -95,8 +95,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ stock: stockMaj, mouvement });
   } catch (error: unknown) {
-    const err = error as Error;
+    const err = error as Error & { code?: string };
     console.error("[POST /api/stock/mouvement]", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    if (err.code === "P2025") return NextResponse.json({ error: "Produit introuvable" }, { status: 404 });
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }

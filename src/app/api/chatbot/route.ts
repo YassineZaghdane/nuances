@@ -24,10 +24,22 @@ export async function POST(req: Request) {
     const { messages } = body
 
     if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json(
-        { error: 'Messages requis' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Messages requis' }, { status: 400 })
+    }
+    // Validation : max 20 messages, rôles autorisés uniquement (anti-injection)
+    if (messages.length > 20) {
+      return NextResponse.json({ error: 'Trop de messages' }, { status: 400 })
+    }
+    for (const m of messages) {
+      if (typeof m !== 'object' || !m) {
+        return NextResponse.json({ error: 'Format de messages invalide' }, { status: 400 })
+      }
+      if (m.role !== 'user' && m.role !== 'assistant') {
+        return NextResponse.json({ error: 'Rôle de message invalide' }, { status: 400 })
+      }
+      if (typeof m.content !== 'string' || m.content.length > 2000) {
+        return NextResponse.json({ error: 'Contenu de message invalide' }, { status: 400 })
+      }
     }
 
     if (!process.env.ANTHROPIC_API_KEY) {

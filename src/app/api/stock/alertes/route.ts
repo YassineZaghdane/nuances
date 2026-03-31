@@ -10,7 +10,9 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
     const cronKey = searchParams.get('key')
-    const isCron  = cronKey === process.env.CRON_SECRET_KEY
+    const cronSecret = process.env.CRON_SECRET_KEY
+    // Sécurité : la clé cron ne doit être acceptée que si elle est définie et non vide
+    const isCron = !!(cronSecret && cronSecret.length >= 16 && cronKey === cronSecret)
 
     if (!isCron) {
       const session = await getServerSession(authOptions)

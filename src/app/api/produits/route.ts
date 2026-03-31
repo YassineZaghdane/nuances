@@ -8,6 +8,24 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { slugify } from "@/lib/utils";
+import { z } from "zod";
+
+const produitPostSchema = z.object({
+  nom:         z.string().min(2).max(100),
+  slug:        z.string().min(2).max(100).regex(/^[a-z0-9-]+$/).optional(),
+  prix:        z.number().positive().max(99999),
+  prixAchat:   z.number().nonnegative().max(99999).optional().nullable(),
+  categorieId: z.string().min(1).max(100),
+  description: z.string().max(1000).optional().nullable(),
+  notes:       z.string().max(500).optional().nullable(),
+  images:      z.array(z.string().url()).max(5).optional().default([]),
+  actif:       z.boolean().optional().default(true),
+  featured:    z.boolean().optional().default(false),
+  exclusif:    z.boolean().optional().default(false),
+  nouveaute:   z.boolean().optional().default(false),
+  offre:       z.boolean().optional().default(false),
+  offreLabel:  z.string().max(100).optional().nullable(),
+});
 
 export async function GET(req: Request) {
   try {
@@ -90,9 +108,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json(serialized);
   } catch (error: unknown) {
-    const err = error as Error;
-    console.error("[GET /api/produits]", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("[GET /api/produits]", error);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }
 
@@ -108,6 +125,13 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
+    const parsed = produitPostSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Données invalides", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
     const {
       nom,
       slug,
@@ -123,14 +147,7 @@ export async function POST(req: Request) {
       nouveaute,
       offre,
       offreLabel,
-    } = body;
-
-    if (!nom || !prix || !categorieId) {
-      return NextResponse.json(
-        { error: "Champs requis: nom, slug (ou généré), prix, categorieId" },
-        { status: 400 }
-      );
-    }
+    } = parsed.data;
 
     const slugFinal = (typeof slug === "string" && slug.trim()) || slugify(nom);
 
@@ -171,6 +188,9 @@ export async function POST(req: Request) {
     if (err.code === "P2002") {
       return NextResponse.json({ error: "Slug déjà utilisé" }, { status: 409 });
     }
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    if (err.code === "P2025") {
+      return NextResponse.json({ error: "Catégorie introuvable" }, { status: 404 });
+    }
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }

@@ -26,10 +26,10 @@ export async function GET() {
       by: ["clientId"],
       where: { createdAt: { gte: debutMois, lte: finMois } },
     }).then((r) => r.length),
+    // Select minimal pour éviter de rapatrier tous les champs produit inutilement
     prisma.stock.findMany({
-      where: {},
-      include: { produit: true },
-    }).then((stocks) => stocks.filter((s) => s.quantite <= s.seuilAlerte).length),
+      select: { quantite: true, seuilAlerte: true, produit: { select: { actif: true } } },
+    }).then((stocks) => stocks.filter((s) => s.produit.actif && s.quantite <= s.seuilAlerte).length),
   ]);
 
   return Response.json({

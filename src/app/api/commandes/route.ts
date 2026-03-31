@@ -13,6 +13,30 @@ import { envoyerConfirmationCommande } from "@/lib/email";
 import { Prisma } from "@prisma/client";
 import { rateLimit } from "@/lib/rateLimit";
 import { TAILLE_ML } from "@/types";
+import { z } from "zod";
+
+const commandeSchema = z.object({
+  client: z.object({
+    nom:       z.string().min(2).max(100),
+    telephone: z.string().min(8).max(20),
+    email:     z.string().email().optional().or(z.literal("")),
+    adresse:   z.string().max(200).optional(),
+    ville:     z.string().max(100).optional(),
+  }),
+  lignes: z.array(z.object({
+    produitId:    z.string().min(1).max(100),
+    taille:       z.enum(["5ml","10ml","15ml","30ml","50ml","100ml","1ml","2ml","3ml","7ml","20ml","200ml"] as const),
+    quantite:     z.number().int().min(1).max(99),
+    prixUnitaire: z.number().positive().max(99999),
+  })).min(1).max(20),
+  fraisLivraison:   z.number().min(0).max(500).optional().default(0),
+  modePaiement:     z.enum(["CASH","VIREMENT","PAIEMENT_LIVRAISON"]).optional().default("PAIEMENT_LIVRAISON"),
+  source:           z.enum(["INSTAGRAM","WHATSAPP","BOUCHE_A_OREILLE","BOUTIQUE","SITE_WEB"]).optional().default("SITE_WEB"),
+  adresseLivraison: z.string().max(200).optional(),
+  villeLivraison:   z.string().max(100).optional(),
+  notes:            z.string().max(500).optional(),
+  statut:           z.enum(["EN_ATTENTE","LIVREE"]).optional(),
+});
 
 export const dynamic = "force-dynamic";
 
@@ -73,9 +97,8 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ commandes: serialized, total });
   } catch (error: unknown) {
-    const err = error as Error;
-    console.error("[GET /api/commandes]", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("[GET /api/commandes]", error);
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }
 
@@ -92,22 +115,24 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const client = body.client as { nom: string; telephone: string; email?: string; adresse?: string; ville?: string } | undefined;
-  const lignes = Array.isArray(body.lignes) ? body.lignes : [];
-  const modePaiement = typeof body.modePaiement === "string" ? body.modePaiement : "PAIEMENT_LIVRAISON";
-  const notes = body.notes ?? null;
-  const statutBody = body.statut;
-  const source = typeof body.source === "string" ? body.source : "SITE_WEB";
-  const adresse = client?.adresse ?? body.adresseLivraison ?? "Boutique Nabeul";
-  const ville = client?.ville ?? body.villeLivraison ?? "Nabeul";
-  const fraisLivraison = body.fraisLivraison != null ? Number(body.fraisLivraison) : 0;
 
-  if (!client?.nom || !client?.telephone || lignes.length === 0) {
-    return Response.json(
-      { error: "Données client et lignes requises" },
+  const parsed = commandeSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Données invalides", details: parsed.error.flatten() },
       { status: 400 }
     );
   }
+  const data = parsed.data;
+  const client = data.client;
+  const lignes = data.lignes;
+  const modePaiement = data.modePaiement;
+  const notes = data.notes ?? null;
+  const statutBody = data.statut;
+  const source = data.source;
+  const adresse = client.adresse ?? data.adresseLivraison ?? "Boutique Nabeul";
+  const ville = client.ville ?? data.villeLivraison ?? "Nabeul";
+  const fraisLivraison = data.fraisLivraison;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -155,7 +180,8 @@ export async function POST(request: NextRequest) {
           new Prisma.Decimal(ligne.prixUnitaire).mul(ligne.quantite)
         );
       }
-      const montantTotalFinal = body.montantTotal != null ? new Prisma.Decimal(Number(body.montantTotal)) : montantTotal;
+      // Toujours utiliser le total calculé côté serveur — ne jamais faire confiance au client
+      const montantTotalFinal = montantTotal.plus(new Prisma.Decimal(fraisLivraison));
 
       const statut = (statutBody === "LIVREE" ? "LIVREE" : "EN_ATTENTE") as "EN_ATTENTE" | "LIVREE";
       const statutPaiement = (statut === "LIVREE" ? "PAYE" : "EN_ATTENTE") as "PAYE" | "EN_ATTENTE";
