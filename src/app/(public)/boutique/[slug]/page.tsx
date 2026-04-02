@@ -29,6 +29,7 @@ export default function FicheProduitPage() {
   const [produit, setProduit] = useState<Produit | null>(null)
   const [loading, setLoading] = useState(true)
   const [imgActive, setImgActive] = useState(0)
+  const [resolvedSrc, setResolvedSrc] = useState<string | null>(null)
   const [taille, setTaille] = useState('')
   const [qte, setQte] = useState(1)
   const [added, setAdded] = useState(false)
@@ -66,6 +67,52 @@ export default function FicheProduitPage() {
   const prixBase = Number(produit.prix)
   const prixFinal = prixBase + (TAILLE_PRIX[taille] || 0)
   const images = produit.images?.length > 0 ? produit.images : []
+  const activeImgRaw = images[imgActive]
+
+  useEffect(() => {
+    // Imgur renvoie souvent des albums (ex: https://imgur.com/a/xxx) que <img> ne sait pas afficher.
+    // On résout via /api/imgur/resolve-image (og:image).
+    if (!activeImgRaw) {
+      setResolvedSrc(null)
+      return
+    }
+
+    const cacheKey = `imgur-resolved:${activeImgRaw}`
+    const cached =
+      typeof window !== 'undefined' ? window.sessionStorage.getItem(cacheKey) : null
+    if (cached) {
+      setResolvedSrc(cached)
+      return
+    }
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        if (!/imgur\.com\/(a|gallery)\//i.test(activeImgRaw)) {
+          if (!cancelled) setResolvedSrc(activeImgRaw)
+          return
+        }
+
+        const r = await fetch(
+          `/api/imgur/resolve-image?url=${encodeURIComponent(activeImgRaw)}`
+        )
+        const d = await r.json().catch(() => ({}))
+        const nextSrc =
+          typeof d?.src === 'string' && d.src ? d.src : activeImgRaw
+
+        if (!cancelled) {
+          setResolvedSrc(nextSrc)
+          window.sessionStorage.setItem(cacheKey, nextSrc)
+        }
+      } catch {
+        if (!cancelled) setResolvedSrc(activeImgRaw)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [activeImgRaw])
 
   const handleAdd = () => {
     if (!taille || dispo === 0) return
@@ -124,7 +171,16 @@ export default function FicheProduitPage() {
                 {produit.offre && produit.offreLabel && <span style={{ background:'#2E7D52', color:'white', fontSize:'0.58rem', letterSpacing:'0.15em', textTransform:'uppercase', padding:'0.25rem 0.6rem' }}>{produit.offreLabel}</span>}
               </div>
               {images.length > 0 ? (
-                <img src={images[imgActive]} alt={produit.nom} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                <img
+                  src={resolvedSrc || activeImgRaw}
+                  alt={produit.nom}
+                  style={{
+                    width:'100%',
+                    height:'100%',
+                    objectFit:'cover',
+                    display:'block'
+                  }}
+                />
               ) : (
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
                   <div style={{ width:'32px', height:'20px', background:'linear-gradient(180deg,#C4960A,#8B6914)', borderRadius:'4px 4px 0 0', boxShadow:'0 4px 12px rgba(196,150,10,0.4)' }}/>
@@ -139,7 +195,7 @@ export default function FicheProduitPage() {
               <div style={{ display:'flex', gap:'0.6rem' }}>
                 {images.map((img, i) => (
                   <button key={i} onClick={() => setImgActive(i)} style={{ width:'72px', height:'72px', border: imgActive === i ? '2px solid #C4960A' : '1px solid #EDE5D4', background:'#EDE5D4', cursor:'pointer', padding:0, overflow:'hidden' }}>
-                    <img src={img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                    <img src={resolvedSrc && i === imgActive ? resolvedSrc : img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
                   </button>
                 ))}
               </div>
