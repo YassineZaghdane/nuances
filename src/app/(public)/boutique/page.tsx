@@ -31,8 +31,9 @@ function BoutiqueSkeleton() {
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+        gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
         gap: "1.5rem",
+        alignItems: "stretch",
       }}
     >
       {[...Array(6)].map((_, i) => (
@@ -399,8 +400,9 @@ function BoutiquePageInner() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
               gap: "1.5rem",
+              alignItems: "stretch",
             }}
           >
             {filtered.map((p, i) => (
@@ -409,6 +411,10 @@ function BoutiquePageInner() {
                 style={{
                   opacity: 0,
                   animation: `fadeUp 0.6s ease ${i * 0.08}s forwards`,
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  minHeight: 0,
                 }}
               >
                 <ProductCard

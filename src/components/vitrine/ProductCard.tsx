@@ -29,6 +29,18 @@ const TAILLE_PRIX: Record<string, number> = {
   "100ml": 20,
 };
 
+const cardHoverEnter = (e: React.MouseEvent<HTMLElement>) => {
+  const el = e.currentTarget as HTMLElement;
+  el.style.transform = "translateY(-4px)";
+  el.style.boxShadow = "0 12px 40px rgba(196,150,10,0.15)";
+};
+
+const cardHoverLeave = (e: React.MouseEvent<HTMLElement>) => {
+  const el = e.currentTarget as HTMLElement;
+  el.style.transform = "translateY(0)";
+  el.style.boxShadow = "none";
+};
+
 export function ProductCard({
   id,
   nom,
@@ -43,7 +55,7 @@ export function ProductCard({
   offre,
   offreLabel,
 }: ProductCardProps) {
-  const { addItem, openCart } = useCartStore();
+  const { addItem } = useCartStore();
   const [selectedTaille, setSelectedTaille] = useState(
     stocks?.[0]?.taille || "30ml"
   );
@@ -71,49 +83,119 @@ export function ProductCard({
 
   return (
     <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseEnter={(e) => {
+        setHovered(true);
+        cardHoverEnter(e);
+      }}
+      onMouseLeave={(e) => {
+        setHovered(false);
+        cardHoverLeave(e);
+      }}
       style={{
-        background: "#FDFAF5",
-        border: "1px solid rgba(196,150,10,0.12)",
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        width: "100%",
+        background: "white",
+        border: "1px solid #EDE5D4",
+        borderRadius: "6px",
         overflow: "hidden",
+        transition: "box-shadow 0.3s, transform 0.3s",
         cursor: "pointer",
-        transform: hovered ? "translateY(-6px)" : "translateY(0)",
-        boxShadow: hovered
-          ? "0 24px 56px rgba(196,150,10,0.18)"
-          : "0 2px 12px rgba(26,18,8,0.04)",
-        transition: "all 0.4s cubic-bezier(0.16,1,0.3,1)",
         position: "relative",
+        transform: "translateY(0)",
+        boxShadow: "none",
       }}
     >
-      <Link href={`/boutique/${slug}`} style={{ textDecoration: "none" }}>
-        {/* ZONE IMAGE */}
+      <Link
+        href={`/boutique/${slug}`}
+        style={{
+          textDecoration: "none",
+          color: "inherit",
+          display: "flex",
+          flexDirection: "column",
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
         <div
           style={{
-            height: "280px",
-            background: "linear-gradient(145deg, #EDE5D4 0%, #D4B896 100%)",
+            height: "220px",
+            background: "linear-gradient(135deg,#F5EFE0,#EDE5D4)",
+            flexShrink: 0,
+            position: "relative",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            position: "relative",
             overflow: "hidden",
           }}
         >
-          <div style={{
-            position:'absolute', top:'1rem', left:'1rem',
-            display:'flex', flexDirection:'column', gap:'0.3rem', zIndex:2,
-          }}>
+          <div
+            style={{
+              position: "absolute",
+              top: "1rem",
+              left: "1rem",
+              display: "flex",
+              flexDirection: "column",
+              gap: "0.3rem",
+              zIndex: 2,
+            }}
+          >
             {nouveaute && (
-              <span style={{ background:'#1A1208', color:'white', fontSize:'0.55rem', letterSpacing:'0.14em', textTransform:'uppercase', padding:'0.22rem 0.6rem' }}>Nouveauté</span>
+              <span
+                style={{
+                  background: "#1A1208",
+                  color: "white",
+                  fontSize: "0.55rem",
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  padding: "0.22rem 0.6rem",
+                }}
+              >
+                Nouveauté
+              </span>
             )}
             {exclusif && (
-              <span style={{ background:'#C4960A', color:'white', fontSize:'0.55rem', letterSpacing:'0.14em', textTransform:'uppercase', padding:'0.22rem 0.6rem' }}>Exclusif</span>
+              <span
+                style={{
+                  background: "#C4960A",
+                  color: "white",
+                  fontSize: "0.55rem",
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  padding: "0.22rem 0.6rem",
+                }}
+              >
+                Exclusif
+              </span>
             )}
             {offre && offreLabel && (
-              <span style={{ background:'#2E7D52', color:'white', fontSize:'0.55rem', letterSpacing:'0.14em', textTransform:'uppercase', padding:'0.22rem 0.6rem' }}>{offreLabel}</span>
+              <span
+                style={{
+                  background: "#2E7D52",
+                  color: "white",
+                  fontSize: "0.55rem",
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  padding: "0.22rem 0.6rem",
+                }}
+              >
+                {offreLabel}
+              </span>
             )}
             {featured && !nouveaute && !exclusif && (
-              <span style={{ background:'#7A5C9B', color:'white', fontSize:'0.55rem', letterSpacing:'0.14em', textTransform:'uppercase', padding:'0.22rem 0.6rem' }}>Bestseller</span>
+              <span
+                style={{
+                  background: "#7A5C9B",
+                  color: "white",
+                  fontSize: "0.55rem",
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  padding: "0.22rem 0.6rem",
+                }}
+              >
+                Bestseller
+              </span>
             )}
           </div>
 
@@ -254,44 +336,60 @@ export function ProductCard({
           </div>
         </div>
 
-        {/* INFOS PRODUIT */}
-        <div style={{ padding: "1.4rem 1.4rem 0.8rem" }}>
+        <div
+          style={{
+            padding: "1.2rem",
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            gap: "0.5rem",
+          }}
+        >
           <h3
             style={{
-              fontFamily: "Cormorant Garamond, serif",
-              fontSize: "1.25rem",
+              fontFamily: "Cormorant Garamond,serif",
+              fontSize: "1.15rem",
               fontWeight: 400,
               color: "#1A1208",
-              marginBottom: "0.25rem",
+              margin: 0,
+              minHeight: "2.6rem",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
             }}
           >
             {nom}
           </h3>
-          {notes && (
-            <p
-              style={{
-                fontSize: "0.7rem",
-                color: "#8A7B68",
-                letterSpacing: "0.08em",
-                marginBottom: "1rem",
-              }}
-            >
-              {notes}
-            </p>
-          )}
+          <p
+            style={{
+              fontSize: "0.72rem",
+              color: "#8A7B68",
+              margin: 0,
+              lineHeight: 1.5,
+              height: "2.16rem",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {notes || "\u00A0"}
+          </p>
 
-          {taillesDispos.length > 0 && (
-            <div
-              style={{
-                display: "flex",
-                gap: "0.4rem",
-                marginBottom: "1rem",
-                flexWrap: "wrap",
-              }}
-            >
-              {taillesDispos.map((s) => (
+          <div
+            style={{
+              display: "flex",
+              gap: "0.4rem",
+              flexWrap: "wrap",
+              minHeight: "2rem",
+            }}
+          >
+            {taillesDispos.length > 0 &&
+              taillesDispos.map((s) => (
                 <button
                   key={s.taille}
+                  type="button"
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -316,15 +414,16 @@ export function ProductCard({
                   {s.taille}
                 </button>
               ))}
-            </div>
-          )}
+          </div>
 
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
-              paddingBottom: "1rem",
+              justifyContent: "space-between",
+              marginTop: "auto",
+              paddingTop: "0.8rem",
+              borderTop: "1px solid #F0EBE0",
             }}
           >
             <span
@@ -339,6 +438,7 @@ export function ProductCard({
             </span>
 
             <button
+              type="button"
               onClick={handleAdd}
               style={{
                 background: adding ? "#5A8A5A" : "#1A1208",

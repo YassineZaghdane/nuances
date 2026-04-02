@@ -13,6 +13,13 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   eslint: { ignoreDuringBuilds: true },
+  /** Évite les erreurs « Cannot find module './NNNN.js' » en dev (cache webpack disque corrompu / chemins avec espaces). */
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.cache = { type: 'memory' }
+    }
+    return config
+  },
   async headers() {
     return [
       {

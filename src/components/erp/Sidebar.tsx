@@ -5,6 +5,7 @@
  */
 "use client"
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 
@@ -68,23 +69,27 @@ export function Sidebar({ role = 'ADMIN' }: { role?: string }) {
 
       {/* Logo */}
       <div style={{
-        padding: '1.8rem 1.6rem 1.4rem',
+        padding: '1.2rem 1.4rem 1rem',
         borderBottom: '1px solid #EDE5D4',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        gap: '0.2rem',
       }}>
+        <Image
+          src="/images/brand/logo.png"
+          alt="Nuances Parfums"
+          width={130}
+          height={48}
+          priority
+          style={{ objectFit: 'contain', display: 'block' }}
+        />
         <div style={{
-          fontFamily: 'Cormorant Garamond, serif',
-          fontSize: '1.25rem',
+          fontSize: '0.5rem',
           letterSpacing: '0.22em',
-          color: '#1A1208',
-          textTransform: 'uppercase',
-          fontWeight: 400,
-        }}>✿ Nuances</div>
-        <div style={{
-          fontSize: '0.55rem',
-          letterSpacing: '0.2em',
           color: '#C4960A',
           textTransform: 'uppercase',
-          marginTop: '0.15rem',
+          fontFamily: 'Jost, sans-serif',
         }}>— Gestion —</div>
       </div>
 

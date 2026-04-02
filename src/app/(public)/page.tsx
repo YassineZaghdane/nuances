@@ -6,10 +6,12 @@ function Reveal({
   children,
   delay = 0,
   dir = "up",
+  style: revealStyle,
 }: {
   children: React.ReactNode;
   delay?: number;
   dir?: "up" | "left" | "right" | "scale";
+  style?: React.CSSProperties;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [v, setV] = useState(false);
@@ -44,6 +46,7 @@ function Reveal({
         opacity: v ? 1 : 0,
         transform: v ? "none" : transforms[dir],
         transition: `opacity 0.85s ease ${delay}s, transform 0.85s ease ${delay}s`,
+        ...revealStyle,
       }}
     >
       {children}
@@ -302,21 +305,21 @@ export default function HomePage() {
             </div>
           </Reveal>
 
-          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3,1fr)', gap:'1.5rem' }}>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(240px, 1fr))', gap:'1.2rem', alignItems:'stretch' }}>
             {productos.length === 0 ? (
               [...Array(3)].map((_,i) => (
                 <div key={i} style={{ height:'400px', background:'linear-gradient(90deg,#EDE5D4,#F5EFE0,#EDE5D4)', backgroundSize:'200%', animation:'shimmer 1.5s infinite' }}/>
               ))
             ) : productos.map((p,i) => (
-              <Reveal key={p.id} delay={i*0.14} dir="scale">
-                <Link href={`/boutique/${p.slug}`} style={{ textDecoration:'none', display:'block' }}>
-                  <div style={{ background:'#F5EFE0', transition:'all 0.4s ease', cursor:'pointer' }}
-                    onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.cssText += ';transform:translateY(-6px);box-shadow:0 22px 50px rgba(196,150,10,0.16)'}}
-                    onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.transform='translateY(0)';(e.currentTarget as HTMLElement).style.boxShadow='none'}}
+              <Reveal key={p.id} delay={i*0.14} dir="scale" style={{ height:'100%', display:'flex', flexDirection:'column', minHeight:0 }}>
+                <Link href={`/boutique/${p.slug}`} style={{ textDecoration:'none', color:'inherit', display:'flex', flexDirection:'column', height:'100%', flex:1, minHeight:0 }}>
+                  <div
+                    style={{ background:'#F5EFE0', border:'1px solid #EDE5D4', borderRadius:'6px', overflow:'hidden', display:'flex', flexDirection:'column', height:'100%', cursor:'pointer', transition:'box-shadow 0.3s, transform 0.3s', transform:'translateY(0)', boxShadow:'none' }}
+                    onMouseEnter={e=>{ const el=e.currentTarget as HTMLElement; el.style.transform='translateY(-4px)'; el.style.boxShadow='0 12px 40px rgba(196,150,10,0.15)' }}
+                    onMouseLeave={e=>{ const el=e.currentTarget as HTMLElement; el.style.transform='translateY(0)'; el.style.boxShadow='none' }}
                   >
-                    {/* Image zone */}
-                    <div style={{ height:'260px', background:'linear-gradient(145deg,#EDE5D4,#D4B896)', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
-                      {p.featured && <div style={{ position:'absolute', top:'1rem', left:'1rem', background:'#C4960A', color:'white', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', padding:'0.22rem 0.65rem' }}>Bestseller</div>}
+                    <div style={{ height:'220px', background:'linear-gradient(135deg,#F5EFE0,#EDE5D4)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
+                      {p.featured && <div style={{ position:'absolute', top:'1rem', left:'1rem', background:'#C4960A', color:'white', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', padding:'0.22rem 0.65rem', zIndex:2 }}>Bestseller</div>}
                       <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'3px' }}>
                         <div style={{ width:'24px', height:'14px', background:'linear-gradient(180deg,#C4960A,#8B6914)', borderRadius:'3px 3px 0 0' }}/>
                         <div style={{ width:'15px', height:'8px', background:'#C4960A88' }}/>
@@ -328,11 +331,10 @@ export default function HomePage() {
                         </div>
                       </div>
                     </div>
-                    {/* Info */}
-                    <div style={{ padding:'1.4rem' }}>
-                      <h3 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.2rem', color:'#1A1208', marginBottom:'0.2rem' }}>{p.nom}</h3>
-                      {p.notes && <p style={{ fontSize:'0.68rem', color:'#8A7B68', letterSpacing:'0.07em', marginBottom:'0.9rem' }}>{p.notes}</p>}
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div style={{ padding:'1.2rem', display:'flex', flexDirection:'column', flex:1, gap:'0.5rem' }}>
+                      <h3 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.15rem', fontWeight:400, color:'#1A1208', margin:0, minHeight:'2.6rem', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{p.nom}</h3>
+                      <p style={{ fontSize:'0.72rem', color:'#8A7B68', margin:0, lineHeight:1.5, height:'2.16rem', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{p.notes || '\u00A0'}</p>
+                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'auto', paddingTop:'0.8rem', borderTop:'1px solid #F0EBE0' }}>
                         <span style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.3rem', color:'#C4960A' }}>Dès {Number(p.prix).toFixed(0)} DT</span>
                         <span style={{ fontSize:'0.65rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#1A1208', border:'1px solid rgba(26,18,8,0.18)', padding:'0.3rem 0.7rem' }}>Voir</span>
                       </div>
@@ -355,19 +357,58 @@ export default function HomePage() {
                 <a href="/boutique" style={{ fontSize:'0.74rem', color:'rgba(255,255,255,0.4)', textDecoration:'none', letterSpacing:'0.1em' }}>Voir tout →</a>
               </div>
             </Reveal>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))', gap:'1px', background:'rgba(196,150,10,0.15)' }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:'1.2rem', alignItems:'stretch' }}>
               {exclusifs.map((p,i) => (
-                <Reveal key={p.id} delay={i*0.1}>
-                  <a href={`/boutique/${p.slug}`} style={{ textDecoration:'none', display:'block', background:'#1A1208', padding:'2rem', transition:'background 0.3s' }}
-                    onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='#2C1E10'}
-                    onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='#1A1208'}
-                  >
-                    <div style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.8rem', color:'rgba(196,150,10,0.2)', marginBottom:'1rem' }}>✿</div>
-                    <div style={{ fontSize:'0.55rem', letterSpacing:'0.2em', textTransform:'uppercase', color:'#C4960A', marginBottom:'0.5rem' }}>Exclusif</div>
-                    <h3 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.3rem', fontWeight:300, color:'white', marginBottom:'0.3rem', lineHeight:1.2 }}>{p.nom}</h3>
-                    {p.notes && <p style={{ fontSize:'0.72rem', color:'rgba(255,255,255,0.35)', marginBottom:'1rem', lineHeight:1.6 }}>{p.notes}</p>}
-                    <span style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.2rem', color:'#C4960A' }}>Dès {Number(p.prix).toFixed(0)} DT</span>
-                  </a>
+                <Reveal key={p.id} delay={i*0.1} style={{ height:'100%', display:'flex', flexDirection:'column', minHeight:0 }}>
+                  <Link href={`/boutique/${p.slug}`} style={{ textDecoration:'none', display:'flex', flexDirection:'column', height:'100%', flex:1, minHeight:0 }}>
+                    <div
+                      style={{
+                        background:'rgba(255,255,255,0.05)',
+                        border:'1px solid rgba(196,150,10,0.2)',
+                        borderRadius:'6px',
+                        padding:'1.5rem',
+                        display:'flex',
+                        flexDirection:'column',
+                        gap:'0.6rem',
+                        height:'100%',
+                        cursor:'pointer',
+                        transition:'all 0.3s',
+                        transform:'translateY(0)',
+                        boxShadow:'none',
+                      }}
+                      onMouseEnter={e=>{ const el=e.currentTarget as HTMLElement; el.style.transform='translateY(-4px)'; el.style.boxShadow='0 12px 40px rgba(196,150,10,0.15)' }}
+                      onMouseLeave={e=>{ const el=e.currentTarget as HTMLElement; el.style.transform='translateY(0)'; el.style.boxShadow='none' }}
+                    >
+                      <div style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.8rem', color:'rgba(196,150,10,0.2)', marginBottom:'0.1rem' }}>✿</div>
+                      <div style={{ fontSize:'0.55rem', letterSpacing:'0.2em', textTransform:'uppercase', color:'#C4960A', marginBottom:'0.1rem' }}>Exclusif</div>
+                      <h3 style={{
+                        fontFamily:'Cormorant Garamond,serif',
+                        fontSize:'1.2rem',
+                        fontWeight:400,
+                        color:'white',
+                        margin:0,
+                        whiteSpace:'nowrap',
+                        overflow:'hidden',
+                        textOverflow:'ellipsis',
+                      }}>{p.nom}</h3>
+                      <p style={{
+                        fontSize:'0.75rem',
+                        color:'rgba(255,255,255,0.55)',
+                        margin:0,
+                        lineHeight:1.6,
+                        display:'-webkit-box',
+                        WebkitLineClamp:3,
+                        WebkitBoxOrient:'vertical',
+                        overflow:'hidden',
+                        flex:1,
+                      }}>{p.notes || '\u00A0'}</p>
+                      <div style={{ marginTop:'auto', paddingTop:'0.8rem' }}>
+                        <span style={{ color:'#C4960A', fontSize:'1rem', fontWeight:500 }}>
+                          Dès {Number(p.prix).toFixed(0)} DT
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
                 </Reveal>
               ))}
             </div>
