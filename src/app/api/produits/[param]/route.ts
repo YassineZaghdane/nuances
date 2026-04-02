@@ -41,14 +41,23 @@ export async function GET(_req: Request, { params }: Params) {
   try {
     const { param } = await params;
     const produit = await findProduitPublic(param);
+    const noStore = {
+      "Cache-Control": "private, no-store, max-age=0, must-revalidate",
+    };
     if (!produit) {
-      return NextResponse.json({ error: "Produit introuvable" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Produit introuvable" },
+        { status: 404, headers: noStore }
+      );
     }
-    return NextResponse.json({
-      ...produit,
-      prix: Number(produit.prix),
-      prixAchat: produit.prixAchat ? Number(produit.prixAchat) : null,
-    });
+    return NextResponse.json(
+      {
+        ...produit,
+        prix: Number(produit.prix),
+        prixAchat: produit.prixAchat ? Number(produit.prixAchat) : null,
+      },
+      { headers: noStore }
+    );
   } catch (error: unknown) {
     const err = error as Error;
     return NextResponse.json({ error: err.message }, { status: 500 });

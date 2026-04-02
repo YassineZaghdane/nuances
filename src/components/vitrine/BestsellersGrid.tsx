@@ -20,7 +20,7 @@ export function BestsellersGrid() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("/api/produits?featured=true")
+    fetch("/api/produits?featured=true", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => setProducts(Array.isArray(data) ? data : []))
       .catch(() => setProducts([]))

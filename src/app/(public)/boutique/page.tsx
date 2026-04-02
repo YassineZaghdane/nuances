@@ -80,7 +80,7 @@ function BoutiquePageInner() {
     setLoading(true);
     setFetchError(null);
 
-    fetch("/api/produits")
+    fetch("/api/produits", { cache: "no-store" })
       .then(async (r) => {
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {

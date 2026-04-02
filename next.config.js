@@ -26,12 +26,13 @@ const nextConfig = {
         source: '/(.*)',
         headers: securityHeaders,
       },
+      // Pas de cache CDN sur le catalogue : les badges (ERP) doivent se refléter tout de suite sur la vitrine.
       {
         source: '/api/produits/:path*',
         headers: [
           {
             key: 'Cache-Control',
-            value: 's-maxage=60, stale-while-revalidate=300',
+            value: 'private, no-store, max-age=0, must-revalidate',
           },
         ],
       },

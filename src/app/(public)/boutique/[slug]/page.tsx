@@ -58,7 +58,7 @@ export default function FicheProduitPage() {
     setTaille('')
     setQte(1)
 
-    fetch(`/api/produits/${encodeURIComponent(slug)}`)
+    fetch(`/api/produits/${encodeURIComponent(slug)}`, { cache: 'no-store' })
       .then(async (r) => {
         const d = await r.json().catch(() => ({}))
         if (cancelled) return

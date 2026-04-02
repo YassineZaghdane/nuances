@@ -106,7 +106,11 @@ export async function GET(req: Request) {
       prix: Number(p.prix),
     }));
 
-    return NextResponse.json(serialized);
+    return NextResponse.json(serialized, {
+      headers: {
+        "Cache-Control": "private, no-store, max-age=0, must-revalidate",
+      },
+    });
   } catch (error: unknown) {
     console.error("[GET /api/produits]", error);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });

@@ -13,37 +13,68 @@ type BadgeType = 'exclusif' | 'nouveaute' | 'offre' | 'featured'
 export default function ExclusivitesPage() {
   const [produits, setProduits] = useState<Produit[]>([])
   const [saving, setSaving] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<BadgeType | 'tous'>('tous')
 
   useEffect(() => {
-    fetch('/api/produits?limit=100')
+    fetch('/api/produits?limit=100', { cache: 'no-store' })
       .then(r => r.json())
       .then(d => setProduits(Array.isArray(d) ? d : []))
   }, [])
 
   const toggleBadge = async (id: string, field: BadgeType, value: boolean) => {
+    const prevSnap = produits
+    setSaveError(null)
+    setProduits(p =>
+      p.map(x => (x.id === id ? { ...x, [field]: value } : x))
+    )
     setSaving(id)
-    await fetch(`/api/produits/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: value }),
-    })
-    setProduits(prev => prev.map(p =>
-      p.id === id ? { ...p, [field]: value } : p
-    ))
-    setSaving(null)
+    try {
+      const res = await fetch(`/api/produits/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        const msg =
+          typeof body?.error === 'string' ? body.error : `Erreur ${res.status}`
+        setProduits(prevSnap)
+        setSaveError(msg)
+        return
+      }
+    } catch {
+      setProduits(prevSnap)
+      setSaveError('Réseau indisponible. Réessayez.')
+    } finally {
+      setSaving(null)
+    }
   }
 
   const updateLabel = async (id: string, label: string) => {
-    await fetch(`/api/produits/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ offreLabel: label }),
-    })
-    setProduits(prev => prev.map(p =>
-      p.id === id ? { ...p, offreLabel: label } : p
-    ))
+    const prevSnap = produits
+    setSaveError(null)
+    setProduits(p =>
+      p.map(x => (x.id === id ? { ...x, offreLabel: label } : x))
+    )
+    try {
+      const res = await fetch(`/api/produits/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ offreLabel: label }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        const msg =
+          typeof body?.error === 'string' ? body.error : `Erreur ${res.status}`
+        setProduits(prevSnap)
+        setSaveError(msg)
+      }
+    } catch {
+      setProduits(prevSnap)
+      setSaveError('Réseau indisponible. Réessayez.')
+    }
   }
 
   const filtered = produits.filter(p => {
@@ -89,6 +120,22 @@ export default function ExclusivitesPage() {
         />
       }
     >
+      {saveError && (
+        <div
+          role="alert"
+          style={{
+            marginBottom: '1rem',
+            padding: '0.65rem 1rem',
+            background: '#FAEAEA',
+            color: '#8B3A3A',
+            fontSize: '0.78rem',
+            border: '1px solid rgba(139,58,58,0.2)',
+            borderRadius: '4px',
+          }}
+        >
+          {saveError}
+        </div>
+      )}
       <div style={{ display:'flex', gap:'0.4rem', marginBottom:'1.5rem', flexWrap:'wrap' }}>
         {[{ key:'tous', label:'Tous' }, ...BADGES.map(b => ({ key:b.key, label:b.label }))].map(f => (
           <button key={f.key} onClick={() => setFilter(f.key as BadgeType | 'tous')} style={{

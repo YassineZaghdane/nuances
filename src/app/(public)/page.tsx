@@ -132,10 +132,18 @@ export default function HomePage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/produits?featured=true&limit=3').then((r) => r.json()),
-      fetch('/api/produits?exclusif=true&limit=4').then((r) => r.json()),
-      fetch('/api/produits?nouveaute=true&limit=4').then((r) => r.json()),
-      fetch('/api/produits?offre=true&limit=4').then((r) => r.json()),
+      fetch('/api/produits?featured=true&limit=3', { cache: 'no-store' }).then(
+        (r) => r.json()
+      ),
+      fetch('/api/produits?exclusif=true&limit=4', { cache: 'no-store' }).then(
+        (r) => r.json()
+      ),
+      fetch('/api/produits?nouveaute=true&limit=4', { cache: 'no-store' }).then(
+        (r) => r.json()
+      ),
+      fetch('/api/produits?offre=true&limit=4', { cache: 'no-store' }).then(
+        (r) => r.json()
+      ),
     ])
       .then(([feat, excl, nouv, offr]) => {
         setProductos(parseProduitList(feat).slice(0, 3))
