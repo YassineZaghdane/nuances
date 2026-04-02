@@ -91,10 +91,26 @@ const STATUT_LABELS: Record<string,{label:string;color:string}> = {
   ANNULEE:        { label:'Annulée',                           color:'#8B3A3A' },
 }
 
+type HomeProduitCard = {
+  id: string
+  nom: string
+  slug: string
+  notes?: string
+  prix: number
+  featured?: boolean
+  offreLabel?: string | null
+}
+
+function parseProduitList(data: unknown): HomeProduitCard[] {
+  return Array.isArray(data) ? (data as HomeProduitCard[]) : []
+}
+
 export default function HomePage() {
   const [isMobile, setIsMobile] = useState(false)
-  const [productos, setProductos] = useState<Array<{id:string,nom:string,slug:string,notes?:string,prix:number,featured:boolean}>>([])
-  const [exclusifs, setExclusifs] = useState<Array<{id:string,nom:string,slug:string,notes?:string,prix:number}>>([])
+  const [productos, setProductos] = useState<HomeProduitCard[]>([])
+  const [exclusifs, setExclusifs] = useState<HomeProduitCard[]>([])
+  const [nouveautes, setNouveautes] = useState<HomeProduitCard[]>([])
+  const [offres, setOffres] = useState<HomeProduitCard[]>([])
   const [suiviNumero, setSuiviNumero] = useState('')
   const [suiviLoading, setSuiviLoading] = useState(false)
   const [suiviError, setSuiviError] = useState('')
@@ -115,14 +131,24 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/produits?featured=true&limit=3')
-      .then(r => r.json())
-      .then(d => setProductos(Array.isArray(d) ? d.slice(0,3) : []))
-      .catch(() => {})
-    fetch('/api/produits?exclusif=true&limit=4')
-      .then(r => r.json())
-      .then(d => setExclusifs(Array.isArray(d) ? d.slice(0,4) : []))
-      .catch(() => {})
+    Promise.all([
+      fetch('/api/produits?featured=true&limit=3').then((r) => r.json()),
+      fetch('/api/produits?exclusif=true&limit=4').then((r) => r.json()),
+      fetch('/api/produits?nouveaute=true&limit=4').then((r) => r.json()),
+      fetch('/api/produits?offre=true&limit=4').then((r) => r.json()),
+    ])
+      .then(([feat, excl, nouv, offr]) => {
+        setProductos(parseProduitList(feat).slice(0, 3))
+        setExclusifs(parseProduitList(excl).slice(0, 4))
+        setNouveautes(parseProduitList(nouv).slice(0, 4))
+        setOffres(parseProduitList(offr).slice(0, 4))
+      })
+      .catch(() => {
+        setProductos([])
+        setExclusifs([])
+        setNouveautes([])
+        setOffres([])
+      })
   }, [])
 
   const handleSuivi = async () => {
@@ -293,15 +319,60 @@ export default function HomePage() {
           </div>
         </section>
 
+        {(productos.length > 0 || nouveautes.length > 0 || offres.length > 0 || exclusifs.length > 0) && (
+          <nav
+            aria-label="Accès rapide aux mises en avant"
+            style={{
+              padding:'0.85rem 6%',
+              background:'#FDFAF5',
+              borderBottom:'1px solid rgba(196,150,10,0.1)',
+              position:'sticky',
+              top:'76px',
+              zIndex:30,
+              display:'flex',
+              flexWrap:'wrap',
+              gap:'0.45rem',
+              justifyContent:'center',
+              alignItems:'center',
+            }}
+          >
+            {[
+              { id:'accueil-bestsellers', label:'Bestsellers', show: productos.length > 0 },
+              { id:'accueil-nouveautes', label:'Nouveautés', show: nouveautes.length > 0 },
+              { id:'accueil-offres', label:'Offres', show: offres.length > 0 },
+              { id:'accueil-exclusifs', label:'Exclusifs', show: exclusifs.length > 0 },
+            ].filter((i) => i.show).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior:'smooth', block:'start' })}
+                style={{
+                  padding:'0.42rem 1rem',
+                  fontSize:'0.68rem',
+                  fontFamily:'Jost,sans-serif',
+                  letterSpacing:'0.12em',
+                  textTransform:'uppercase',
+                  background:'white',
+                  color:'#1A1208',
+                  border:'1px solid rgba(26,18,8,0.12)',
+                  cursor:'pointer',
+                  borderRadius:'3px',
+                  transition:'all 0.2s',
+                }}
+              >{item.label}</button>
+            ))}
+          </nav>
+        )}
+
         {/* ════ BESTSELLERS ════ */}
-        <section style={{ padding:'9% 6%', background:'#FDFAF5' }}>
+        <section id="accueil-bestsellers" style={{ padding:'9% 6%', background:'#FDFAF5', scrollMarginTop:'92px' }}>
           <Reveal>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:'3.5rem' }}>
               <div>
                 <span style={{ fontSize:'0.65rem', letterSpacing:'0.38em', textTransform:'uppercase', color:'#C4960A', display:'block', marginBottom:'0.8rem' }}>Nos Incontournables</span>
                 <h2 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'clamp(2rem,3.5vw,3.5rem)', fontWeight:300, color:'#1A1208' }}>Bestsellers</h2>
               </div>
-              <Link href="/boutique" style={{ fontSize:'0.74rem', color:'#8A7B68', textDecoration:'none', letterSpacing:'0.1em' }}>Voir tout →</Link>
+              <Link href="/boutique?badge=featured" style={{ fontSize:'0.74rem', color:'#8A7B68', textDecoration:'none', letterSpacing:'0.1em' }}>Voir tout →</Link>
             </div>
           </Reveal>
 
@@ -346,15 +417,118 @@ export default function HomePage() {
           </div>
         </section>
 
+        {nouveautes.length > 0 && (
+          <section id="accueil-nouveautes" style={{ padding:'9% 6%', background:'#F5EFE0', scrollMarginTop:'92px' }}>
+            <Reveal>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:'3.5rem' }}>
+                <div>
+                  <span style={{ fontSize:'0.65rem', letterSpacing:'0.38em', textTransform:'uppercase', color:'#4A7A9B', display:'block', marginBottom:'0.8rem' }}>Tout juste arrivés</span>
+                  <h2 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'clamp(2rem,3.5vw,3.5rem)', fontWeight:300, color:'#1A1208' }}>Nouveautés</h2>
+                </div>
+                <Link href="/boutique?badge=nouveaute" style={{ fontSize:'0.74rem', color:'#8A7B68', textDecoration:'none', letterSpacing:'0.1em' }}>Voir tout →</Link>
+              </div>
+            </Reveal>
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(240px, 1fr))', gap:'1.2rem', alignItems:'stretch' }}>
+              {nouveautes.map((p,i) => (
+                <Reveal key={p.id} delay={i*0.12} dir="scale" style={{ height:'100%', display:'flex', flexDirection:'column', minHeight:0 }}>
+                  <Link href={`/boutique/${p.slug}`} style={{ textDecoration:'none', color:'inherit', display:'flex', flexDirection:'column', height:'100%', flex:1, minHeight:0 }}>
+                    <div
+                      style={{ background:'white', border:'1px solid #E4EDF2', borderRadius:'6px', overflow:'hidden', display:'flex', flexDirection:'column', height:'100%', cursor:'pointer', transition:'box-shadow 0.3s, transform 0.3s', transform:'translateY(0)', boxShadow:'none' }}
+                      onMouseEnter={e=>{ const el=e.currentTarget as HTMLElement; el.style.transform='translateY(-4px)'; el.style.boxShadow='0 12px 36px rgba(74,122,155,0.12)' }}
+                      onMouseLeave={e=>{ const el=e.currentTarget as HTMLElement; el.style.transform='translateY(0)'; el.style.boxShadow='none' }}
+                    >
+                      <div style={{ height:'220px', background:'linear-gradient(135deg,#EEF5FA,#E4EDF2)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
+                        <div style={{ position:'absolute', top:'1rem', left:'1rem', background:'#4A7A9B', color:'white', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', padding:'0.22rem 0.65rem', zIndex:2 }}>Nouveauté</div>
+                        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'3px' }}>
+                          <div style={{ width:'24px', height:'14px', background:'linear-gradient(180deg,#4A7A9B,#355d78)', borderRadius:'3px 3px 0 0' }}/>
+                          <div style={{ width:'15px', height:'8px', background:'#4A7A9B55' }}/>
+                          <div style={{ width:'60px', height:'95px', background:'linear-gradient(160deg,rgba(255,255,255,0.55),#B8C9D670,#4A7A9B40)', borderRadius:'6px 6px 4px 4px', boxShadow:'5px 8px 22px rgba(74,122,155,0.15), inset 2px 0 8px rgba(255,255,255,0.4)', position:'relative', overflow:'hidden', border:'1px solid rgba(74,122,155,0.2)' }}>
+                            <div style={{ position:'absolute', top:0, left:'17%', width:'13%', height:'100%', background:'rgba(255,255,255,0.32)' }}/>
+                            <div style={{ position:'absolute', bottom:'18%', left:'50%', transform:'translateX(-50%)', width:'70%', padding:'3px 0', background:'rgba(255,255,255,0.93)', textAlign:'center' }}>
+                              <div style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'0.42rem', fontWeight:700, color:'#1A1208', letterSpacing:'0.1em' }}>NUANCES</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ padding:'1.2rem', display:'flex', flexDirection:'column', flex:1, gap:'0.5rem' }}>
+                        <h3 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.15rem', fontWeight:400, color:'#1A1208', margin:0, minHeight:'2.6rem', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{p.nom}</h3>
+                        <p style={{ fontSize:'0.72rem', color:'#8A7B68', margin:0, lineHeight:1.5, height:'2.16rem', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{p.notes || '\u00A0'}</p>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'auto', paddingTop:'0.8rem', borderTop:'1px solid #E4EDF2' }}>
+                          <span style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.3rem', color:'#4A7A9B' }}>Dès {Number(p.prix).toFixed(0)} DT</span>
+                          <span style={{ fontSize:'0.65rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#1A1208', border:'1px solid rgba(26,18,8,0.18)', padding:'0.3rem 0.7rem' }}>Voir</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </Reveal>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {offres.length > 0 && (
+          <section id="accueil-offres" style={{ padding:'9% 6%', background:'#F4FAF6', scrollMarginTop:'92px' }}>
+            <Reveal>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:'3.5rem' }}>
+                <div>
+                  <span style={{ fontSize:'0.65rem', letterSpacing:'0.38em', textTransform:'uppercase', color:'#2E7D52', display:'block', marginBottom:'0.8rem' }}>Profitez-en</span>
+                  <h2 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'clamp(2rem,3.5vw,3.5rem)', fontWeight:300, color:'#1A1208' }}>Offres du moment</h2>
+                </div>
+                <Link href="/boutique?badge=offre" style={{ fontSize:'0.74rem', color:'#8A7B68', textDecoration:'none', letterSpacing:'0.1em' }}>Voir tout →</Link>
+              </div>
+            </Reveal>
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(240px, 1fr))', gap:'1.2rem', alignItems:'stretch' }}>
+              {offres.map((p,i) => (
+                <Reveal key={p.id} delay={i*0.12} dir="scale" style={{ height:'100%', display:'flex', flexDirection:'column', minHeight:0 }}>
+                  <Link href={`/boutique/${p.slug}`} style={{ textDecoration:'none', color:'inherit', display:'flex', flexDirection:'column', height:'100%', flex:1, minHeight:0 }}>
+                    <div
+                      style={{ background:'white', border:'1px solid rgba(46,125,82,0.2)', borderRadius:'6px', overflow:'hidden', display:'flex', flexDirection:'column', height:'100%', cursor:'pointer', transition:'box-shadow 0.3s, transform 0.3s', transform:'translateY(0)', boxShadow:'none' }}
+                      onMouseEnter={e=>{ const el=e.currentTarget as HTMLElement; el.style.transform='translateY(-4px)'; el.style.boxShadow='0 12px 36px rgba(46,125,82,0.12)' }}
+                      onMouseLeave={e=>{ const el=e.currentTarget as HTMLElement; el.style.transform='translateY(0)'; el.style.boxShadow='none' }}
+                    >
+                      <div style={{ height:'220px', background:'linear-gradient(135deg,#E8F5EC,#D4EBDD)', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
+                        <div style={{ position:'absolute', top:'1rem', left:'1rem', display:'flex', flexDirection:'column', gap:'0.25rem', zIndex:2 }}>
+                          <div style={{ background:'#2E7D52', color:'white', fontSize:'0.55rem', letterSpacing:'0.12em', textTransform:'uppercase', padding:'0.22rem 0.65rem' }}>Offre</div>
+                          {p.offreLabel ? (
+                            <div style={{ background:'rgba(255,255,255,0.95)', color:'#1A1208', fontSize:'0.55rem', letterSpacing:'0.08em', padding:'0.2rem 0.55rem', border:'1px solid rgba(46,125,82,0.35)' }}>{p.offreLabel}</div>
+                          ) : null}
+                        </div>
+                        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'3px' }}>
+                          <div style={{ width:'24px', height:'14px', background:'linear-gradient(180deg,#2E7D52,#1e5236)', borderRadius:'3px 3px 0 0' }}/>
+                          <div style={{ width:'15px', height:'8px', background:'#2E7D5244' }}/>
+                          <div style={{ width:'60px', height:'95px', background:'linear-gradient(160deg,rgba(255,255,255,0.55),#B8DCC570,#2E7D5238)', borderRadius:'6px 6px 4px 4px', boxShadow:'5px 8px 22px rgba(46,125,82,0.12), inset 2px 0 8px rgba(255,255,255,0.4)', position:'relative', overflow:'hidden', border:'1px solid rgba(46,125,82,0.18)' }}>
+                            <div style={{ position:'absolute', top:0, left:'17%', width:'13%', height:'100%', background:'rgba(255,255,255,0.32)' }}/>
+                            <div style={{ position:'absolute', bottom:'18%', left:'50%', transform:'translateX(-50%)', width:'70%', padding:'3px 0', background:'rgba(255,255,255,0.93)', textAlign:'center' }}>
+                              <div style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'0.42rem', fontWeight:700, color:'#1A1208', letterSpacing:'0.1em' }}>NUANCES</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ padding:'1.2rem', display:'flex', flexDirection:'column', flex:1, gap:'0.5rem' }}>
+                        <h3 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.15rem', fontWeight:400, color:'#1A1208', margin:0, minHeight:'2.6rem', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{p.nom}</h3>
+                        <p style={{ fontSize:'0.72rem', color:'#8A7B68', margin:0, lineHeight:1.5, height:'2.16rem', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>{p.notes || '\u00A0'}</p>
+                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:'auto', paddingTop:'0.8rem', borderTop:'1px solid rgba(46,125,82,0.12)' }}>
+                          <span style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.3rem', color:'#2E7D52' }}>Dès {Number(p.prix).toFixed(0)} DT</span>
+                          <span style={{ fontSize:'0.65rem', letterSpacing:'0.12em', textTransform:'uppercase', color:'#1A1208', border:'1px solid rgba(26,18,8,0.18)', padding:'0.3rem 0.7rem' }}>Voir</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </Reveal>
+              ))}
+            </div>
+          </section>
+        )}
+
         {exclusifs.length > 0 && (
-          <section style={{ padding:'8% 6%', background:'#1A1208' }}>
+          <section id="accueil-exclusifs" style={{ padding:'8% 6%', background:'#1A1208', scrollMarginTop:'92px' }}>
             <Reveal>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:'3rem' }}>
                 <div>
                   <span style={{ fontSize:'0.65rem', letterSpacing:'0.38em', textTransform:'uppercase', color:'#C4960A', display:'block', marginBottom:'0.8rem' }}>Collection privée</span>
                   <h2 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'clamp(2rem,3.5vw,3.5rem)', fontWeight:300, color:'white' }}>Nos Exclusivités</h2>
                 </div>
-                <a href="/boutique" style={{ fontSize:'0.74rem', color:'rgba(255,255,255,0.4)', textDecoration:'none', letterSpacing:'0.1em' }}>Voir tout →</a>
+                <Link href="/boutique?badge=exclusif" style={{ fontSize:'0.74rem', color:'rgba(255,255,255,0.4)', textDecoration:'none', letterSpacing:'0.1em' }}>Voir tout →</Link>
               </div>
             </Reveal>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(240px, 1fr))', gap:'1.2rem', alignItems:'stretch' }}>

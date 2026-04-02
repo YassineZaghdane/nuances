@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/vitrine/ProductCard";
 import { useCartStore } from "@/store/cart-store";
 
@@ -53,8 +53,19 @@ function BoutiqueSkeleton() {
 }
 
 function BoutiquePageInner() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const typeFilter = (searchParams.get("type") || "").toLowerCase();
+  const badgeFilter = (searchParams.get("badge") || "").toLowerCase();
+
+  const setBadgeParam = (badge: string | null) => {
+    const p = new URLSearchParams(searchParams.toString());
+    if (badge) p.set("badge", badge);
+    else p.delete("badge");
+    const q = p.toString();
+    router.push(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  };
 
   const [produits, setProduits] = useState<Produit[]>([]);
   const [categories, setCategories] = useState<Categorie[]>([]);
@@ -120,18 +131,47 @@ function BoutiquePageInner() {
     return produits;
   }, [produits, typeFilter]);
 
-  const filtered = parUnivers.filter((p) => {
+  const parBadge = useMemo(() => {
+    if (badgeFilter === "featured" || badgeFilter === "bestseller") {
+      return parUnivers.filter((p) => p.featured === true);
+    }
+    if (badgeFilter === "exclusif") {
+      return parUnivers.filter((p) => p.exclusif === true);
+    }
+    if (badgeFilter === "nouveaute") {
+      return parUnivers.filter((p) => p.nouveaute === true);
+    }
+    if (badgeFilter === "offre") {
+      return parUnivers.filter((p) => p.offre === true);
+    }
+    return parUnivers;
+  }, [parUnivers, badgeFilter]);
+
+  const filtered = parBadge.filter((p) => {
     const matchCat = catActive === "tous" || p.categorie?.id === catActive;
     const matchSearch = p.nom.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
 
+  const badgeLabel =
+    badgeFilter === "featured" || badgeFilter === "bestseller"
+      ? "Bestsellers"
+      : badgeFilter === "exclusif"
+        ? "Exclusifs"
+        : badgeFilter === "nouveaute"
+          ? "Nouveautés"
+          : badgeFilter === "offre"
+            ? "Offres"
+            : null;
+
   const sousTitre =
-    typeFilter === "niche"
-      ? "Collection Niche"
-      : typeFilter === "classiques"
-        ? "Classiques"
-        : "Classiques & Niche";
+    badgeLabel != null
+      ? badgeLabel
+      : typeFilter === "niche"
+        ? "Collection Niche"
+        : typeFilter === "classiques"
+          ? "Classiques"
+          : "Classiques & Niche";
 
   return (
     <main
@@ -218,10 +258,8 @@ function BoutiquePageInner() {
           borderBottom: "1px solid rgba(196,150,10,0.12)",
           padding: "1.2rem 5%",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "1.5rem",
-          flexWrap: "wrap",
+          flexDirection: "column",
+          gap: "0.85rem",
           position: "sticky",
           top: "76px",
           zIndex: 50,
@@ -230,113 +268,183 @@ function BoutiquePageInner() {
         <div
           style={{
             display: "flex",
-            gap: "0.3rem",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "1.5rem",
             flexWrap: "wrap",
           }}
         >
-          {[{ id: "tous", nom: "Tous", slug: "" }, ...categories].map(
-            (cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => setCatActive(cat.id)}
-                style={{
-                  padding: "0.5rem 1.2rem",
-                  fontSize: "0.72rem",
-                  fontFamily: "Jost, sans-serif",
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  background: catActive === cat.id ? "#1A1208" : "transparent",
-                  color: catActive === cat.id ? "white" : "#8A7B68",
-                  border: "1px solid",
-                  borderColor:
-                    catActive === cat.id
-                      ? "#1A1208"
-                      : "rgba(26,18,8,0.12)",
-                  cursor: "pointer",
-                  transition: "all 0.25s",
-                }}
-              >
-                {cat.nom}
-              </button>
-            )
-          )}
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-          <div style={{ position: "relative" }}>
-            <span
-              style={{
-                position: "absolute",
-                left: "0.8rem",
-                top: "50%",
-                transform: "translateY(-50%)",
-                fontSize: "0.8rem",
-                color: "#8A7B68",
-              }}
-            >
-              🔍
-            </span>
-            <input
-              type="text"
-              placeholder="Rechercher..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                paddingLeft: "2rem",
-                paddingRight: "1rem",
-                paddingTop: "0.55rem",
-                paddingBottom: "0.55rem",
-                fontSize: "0.8rem",
-                fontFamily: "Jost, sans-serif",
-                border: "1px solid rgba(26,18,8,0.12)",
-                background: "#FDFAF5",
-                color: "#1A1208",
-                outline: "none",
-                width: "200px",
-              }}
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={openCart}
+          <div
             style={{
-              background: "#C4960A",
-              color: "white",
-              border: "none",
-              padding: "0.55rem 1.2rem",
-              fontSize: "0.72rem",
-              fontFamily: "Jost, sans-serif",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              cursor: "pointer",
               display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              position: "relative",
+              gap: "0.3rem",
+              flexWrap: "wrap",
             }}
           >
-            🛍 Panier
-            {count() > 0 && (
+            {[{ id: "tous", nom: "Tous", slug: "" }, ...categories].map(
+              (cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setCatActive(cat.id)}
+                  style={{
+                    padding: "0.5rem 1.2rem",
+                    fontSize: "0.72rem",
+                    fontFamily: "Jost, sans-serif",
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    background: catActive === cat.id ? "#1A1208" : "transparent",
+                    color: catActive === cat.id ? "white" : "#8A7B68",
+                    border: "1px solid",
+                    borderColor:
+                      catActive === cat.id
+                        ? "#1A1208"
+                        : "rgba(26,18,8,0.12)",
+                    cursor: "pointer",
+                    transition: "all 0.25s",
+                  }}
+                >
+                  {cat.nom}
+                </button>
+              )
+            )}
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <div style={{ position: "relative" }}>
               <span
                 style={{
-                  background: "#1A1208",
-                  color: "white",
-                  borderRadius: "50%",
-                  width: "18px",
-                  height: "18px",
-                  fontSize: "0.6rem",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 600,
+                  position: "absolute",
+                  left: "0.8rem",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  fontSize: "0.8rem",
+                  color: "#8A7B68",
                 }}
               >
-                {count()}
+                🔍
               </span>
-            )}
-          </button>
+              <input
+                type="text"
+                placeholder="Rechercher..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{
+                  paddingLeft: "2rem",
+                  paddingRight: "1rem",
+                  paddingTop: "0.55rem",
+                  paddingBottom: "0.55rem",
+                  fontSize: "0.8rem",
+                  fontFamily: "Jost, sans-serif",
+                  border: "1px solid rgba(26,18,8,0.12)",
+                  background: "#FDFAF5",
+                  color: "#1A1208",
+                  outline: "none",
+                  width: "200px",
+                }}
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={openCart}
+              style={{
+                background: "#C4960A",
+                color: "white",
+                border: "none",
+                padding: "0.55rem 1.2rem",
+                fontSize: "0.72rem",
+                fontFamily: "Jost, sans-serif",
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                position: "relative",
+              }}
+            >
+              🛍 Panier
+              {count() > 0 && (
+                <span
+                  style={{
+                    background: "#1A1208",
+                    color: "white",
+                    borderRadius: "50%",
+                    width: "18px",
+                    height: "18px",
+                    fontSize: "0.6rem",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 600,
+                  }}
+                >
+                  {count()}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: "0.35rem",
+            flexWrap: "wrap",
+            alignItems: "center",
+            paddingTop: "0.65rem",
+            borderTop: "1px solid rgba(196,150,10,0.08)",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "0.62rem",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: "#C4B090",
+              marginRight: "0.35rem",
+            }}
+          >
+            Mise en avant
+          </span>
+          {(
+            [
+              { id: "", label: "Tous" },
+              { id: "featured", label: "Bestsellers" },
+              { id: "exclusif", label: "Exclusifs" },
+              { id: "nouveaute", label: "Nouveautés" },
+              { id: "offre", label: "Offres" },
+            ] as const
+          ).map((b) => {
+            const active =
+              b.id === ""
+                ? !badgeFilter
+                : badgeFilter === b.id;
+            return (
+              <button
+                key={b.id || "tous"}
+                type="button"
+                onClick={() => setBadgeParam(b.id || null)}
+                style={{
+                  padding: "0.35rem 0.85rem",
+                  fontSize: "0.68rem",
+                  fontFamily: "Jost, sans-serif",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  background: active ? "#C4960A" : "transparent",
+                  color: active ? "white" : "#8A7B68",
+                  border: "1px solid",
+                  borderColor: active ? "#C4960A" : "rgba(26,18,8,0.12)",
+                  cursor: "pointer",
+                  borderRadius: "3px",
+                  transition: "all 0.2s",
+                }}
+              >
+                {b.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
