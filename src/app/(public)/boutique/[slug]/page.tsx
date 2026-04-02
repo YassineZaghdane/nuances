@@ -159,52 +159,6 @@ export default function FicheProduitPage() {
   const prixBase = Number(produit.prix)
   const prixFinal = prixBase + (TAILLE_PRIX[taille] || 0)
   const images = produit.images?.length > 0 ? produit.images : []
-  const activeImgRaw = images[imgActive]
-
-  useEffect(() => {
-    // Imgur renvoie souvent des albums (ex: https://imgur.com/a/xxx) que <img> ne sait pas afficher.
-    // On résout via /api/imgur/resolve-image (og:image).
-    if (!activeImgRaw) {
-      setResolvedSrc(null)
-      return
-    }
-
-    const cacheKey = `imgur-resolved:${activeImgRaw}`
-    const cached =
-      typeof window !== 'undefined' ? window.sessionStorage.getItem(cacheKey) : null
-    if (cached) {
-      setResolvedSrc(cached)
-      return
-    }
-
-    let cancelled = false
-    ;(async () => {
-      try {
-        if (!/imgur\.com\/(a|gallery)\//i.test(activeImgRaw)) {
-          if (!cancelled) setResolvedSrc(activeImgRaw)
-          return
-        }
-
-        const r = await fetch(
-          `/api/imgur/resolve-image?url=${encodeURIComponent(activeImgRaw)}`
-        )
-        const d = await r.json().catch(() => ({}))
-        const nextSrc =
-          typeof d?.src === 'string' && d.src ? d.src : activeImgRaw
-
-        if (!cancelled) {
-          setResolvedSrc(nextSrc)
-          window.sessionStorage.setItem(cacheKey, nextSrc)
-        }
-      } catch {
-        if (!cancelled) setResolvedSrc(activeImgRaw)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [activeImgRaw])
 
   const handleAdd = () => {
     if (!taille || dispo === 0) return
