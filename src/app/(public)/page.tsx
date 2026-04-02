@@ -330,53 +330,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        {(productos.length > 0 || nouveautes.length > 0 || offres.length > 0 || exclusifs.length > 0) && (
-          <nav
-            aria-label="Accès rapide aux mises en avant"
-            style={{
-              padding:'0.85rem 6%',
-              background:'#FDFAF5',
-              borderBottom:'1px solid rgba(196,150,10,0.1)',
-              position:'sticky',
-              top:'76px',
-              zIndex:30,
-              display:'flex',
-              flexWrap:'wrap',
-              gap:'0.45rem',
-              justifyContent:'center',
-              alignItems:'center',
-            }}
-          >
-            {[
-              { id:'accueil-bestsellers', label:'Bestsellers', show: productos.length > 0 },
-              { id:'accueil-nouveautes', label:'Nouveautés', show: nouveautes.length > 0 },
-              { id:'accueil-offres', label:'Offres', show: offres.length > 0 },
-              { id:'accueil-exclusifs', label:'Exclusifs', show: exclusifs.length > 0 },
-            ].filter((i) => i.show).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => document.getElementById(item.id)?.scrollIntoView({ behavior:'smooth', block:'start' })}
-                style={{
-                  padding:'0.42rem 1rem',
-                  fontSize:'0.68rem',
-                  fontFamily:'Jost,sans-serif',
-                  letterSpacing:'0.12em',
-                  textTransform:'uppercase',
-                  background:'white',
-                  color:'#1A1208',
-                  border:'1px solid rgba(26,18,8,0.12)',
-                  cursor:'pointer',
-                  borderRadius:'3px',
-                  transition:'all 0.2s',
-                }}
-              >{item.label}</button>
-            ))}
-          </nav>
-        )}
-
         {/* ════ BESTSELLERS ════ */}
-        <section id="accueil-bestsellers" style={{ padding:'9% 6%', background:'#FDFAF5', scrollMarginTop:'92px' }}>
+        <section style={{ padding:'9% 6%', background:'#FDFAF5' }}>
           <Reveal>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:'3.5rem' }}>
               <div>
@@ -429,7 +384,7 @@ export default function HomePage() {
         </section>
 
         {nouveautes.length > 0 && (
-          <section id="accueil-nouveautes" style={{ padding:'9% 6%', background:'#F5EFE0', scrollMarginTop:'92px' }}>
+          <section style={{ padding:'9% 6%', background:'#F5EFE0' }}>
             <Reveal>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:'3.5rem' }}>
                 <div>
@@ -532,7 +487,7 @@ export default function HomePage() {
         )}
 
         {exclusifs.length > 0 && (
-          <section id="accueil-exclusifs" style={{ padding:'8% 6%', background:'#1A1208', scrollMarginTop:'92px' }}>
+          <section style={{ padding:'8% 6%', background:'#1A1208' }}>
             <Reveal>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', marginBottom:'3rem' }}>
                 <div>
