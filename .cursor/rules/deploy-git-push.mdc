@@ -1,0 +1,16 @@
+---
+description: Après modifications du code, commit + push vers origin/main pour déployer la prod (Vercel/GitHub).
+alwaysApply: true
+---
+
+# Déploiement Nuances Parfums
+
+- Quand des fichiers du projet sont modifiés pour une fonctionnalité ou un correctif **destiné à la production**, terminer par :
+  1. `npm run build` si le changement touche le code applicatif (doit rester vert).
+  2. `git add` des fichiers pertinents (ne pas committer `.env`, `.claude/`, ni fichiers temporaires).
+  3. `git commit -m "…"` avec un message clair en français ou anglais.
+  4. `git push origin main`.
+
+- Ne pas laisser de changements utiles uniquement en local si l’objectif est un site à jour en prod.
+
+- Si l’arbre est déjà propre et `main` aligné avec `origin/main`, indiquer explicitement qu’aucun push n’est nécessaire.
