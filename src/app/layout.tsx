@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Jost, Raleway } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -21,10 +21,23 @@ const raleway = Raleway({
   variable: "--font-raleway",
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_APP_URL ??
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+
 export const metadata: Metadata = {
-  title: "Nuances Parfums | Parfumerie Nabeul",
+  metadataBase: new URL(siteUrl),
+  applicationName: "Nuances Parfums",
+  title: {
+    default: "Nuances Parfums",
+    template: "%s · Nuances",
+  },
   description:
-    "Nuances Parfums — Parfumerie à Nabeul. Huiles et parfums d'exception, partenaire V.o Aromatiques.",
+    "Parfumerie à Nabeul — huiles et parfums d'exception. Partenaire V.o Aromatiques.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1A1208",
 };
 
 export default function RootLayout({
