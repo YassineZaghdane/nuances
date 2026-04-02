@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useState } from 'react'
 import { ErpPage } from '@/components/erp/ErpPage'
+import { patchProduit, urlListeProduitsErp, VITRINE_FETCH_INIT } from '@/lib/catalog-api'
 
 interface Produit {
   id: string; nom: string; slug: string; prix: number
@@ -59,11 +60,7 @@ export default function ExclusivitesPage() {
       p.map(x => (x.id === id ? { ...x, offreLabel: label } : x))
     )
     try {
-      const res = await fetch(`/api/produits/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ offreLabel: label }),
-      })
+      const res = await patchProduit(id, { offreLabel: label })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         const msg =
@@ -133,7 +130,12 @@ export default function ExclusivitesPage() {
             borderRadius: '4px',
           }}
         >
-          {saveError}
+          <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>{saveError}</div>
+          <div style={{ fontSize: '0.72rem', color: '#6B3030', lineHeight: 1.5 }}>
+            Astuce : en production, l’ERP et la vitrine doivent partager la même base
+            (<code style={{ fontSize: '0.68rem' }}>DATABASE_URL</code> sur Vercel). Les cookies de
+            session doivent être envoyés avec la requête (restez connecté sur le même domaine).
+          </div>
         </div>
       )}
       <div style={{ display:'flex', gap:'0.4rem', marginBottom:'1.5rem', flexWrap:'wrap' }}>

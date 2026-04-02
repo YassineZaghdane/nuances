@@ -7,6 +7,8 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useCartStore } from '@/store/cart-store'
+import { urlProduitParSlug, VITRINE_FETCH_INIT } from '@/lib/catalog-api'
+import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 
 interface StockItem { taille: string; quantite: number; prixVente?: number }
 interface Produit {
@@ -34,6 +36,7 @@ export default function FicheProduitPage() {
         ? slugRaw[0]
         : ''
 
+  const [detailTick, setDetailTick] = useState(0)
   const [produit, setProduit] = useState<Produit | null>(null)
   const [loading, setLoading] = useState(true)
   const [imgActive, setImgActive] = useState(0)
@@ -42,6 +45,8 @@ export default function FicheProduitPage() {
   const [qte, setQte] = useState(1)
   const [added, setAdded] = useState(false)
   const { addItem } = useCartStore()
+
+  useRefreshOnFocus(() => setDetailTick((n) => n + 1))
 
   useEffect(() => {
     if (!slug) {
@@ -58,7 +63,7 @@ export default function FicheProduitPage() {
     setTaille('')
     setQte(1)
 
-    fetch(`/api/produits/${encodeURIComponent(slug)}`, { cache: 'no-store' })
+    fetch(urlProduitParSlug(slug), VITRINE_FETCH_INIT)
       .then(async (r) => {
         const d = await r.json().catch(() => ({}))
         if (cancelled) return
@@ -88,7 +93,7 @@ export default function FicheProduitPage() {
     return () => {
       cancelled = true
     }
-  }, [slug])
+  }, [slug, detailTick])
 
   const galleryImageUrl = produit?.images?.[imgActive] ?? null
 

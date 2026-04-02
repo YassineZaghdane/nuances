@@ -1,6 +1,8 @@
 "use client"
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
+import { urlsAccueilMisesEnAvant, VITRINE_FETCH_INIT } from '@/lib/catalog-api'
+import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 
 function Reveal({
   children,
@@ -107,6 +109,8 @@ function parseProduitList(data: unknown): HomeProduitCard[] {
 
 export default function HomePage() {
   const [isMobile, setIsMobile] = useState(false)
+  /** Incrémenté au retour sur l’onglet pour recharger les mises en avant (badges ERP). */
+  const [spotlightTick, setSpotlightTick] = useState(0)
   const [productos, setProductos] = useState<HomeProduitCard[]>([])
   const [exclusifs, setExclusifs] = useState<HomeProduitCard[]>([])
   const [nouveautes, setNouveautes] = useState<HomeProduitCard[]>([])
@@ -130,20 +134,13 @@ export default function HomePage() {
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  useEffect(() => {
+  const loadMisesEnAvant = useCallback(() => {
+    const u = urlsAccueilMisesEnAvant()
     Promise.all([
-      fetch('/api/produits?featured=true&limit=3', { cache: 'no-store' }).then(
-        (r) => r.json()
-      ),
-      fetch('/api/produits?exclusif=true&limit=4', { cache: 'no-store' }).then(
-        (r) => r.json()
-      ),
-      fetch('/api/produits?nouveaute=true&limit=4', { cache: 'no-store' }).then(
-        (r) => r.json()
-      ),
-      fetch('/api/produits?offre=true&limit=4', { cache: 'no-store' }).then(
-        (r) => r.json()
-      ),
+      fetch(u.featured, VITRINE_FETCH_INIT).then((r) => r.json()),
+      fetch(u.exclusif, VITRINE_FETCH_INIT).then((r) => r.json()),
+      fetch(u.nouveaute, VITRINE_FETCH_INIT).then((r) => r.json()),
+      fetch(u.offre, VITRINE_FETCH_INIT).then((r) => r.json()),
     ])
       .then(([feat, excl, nouv, offr]) => {
         setProductos(parseProduitList(feat).slice(0, 3))
@@ -158,6 +155,12 @@ export default function HomePage() {
         setOffres([])
       })
   }, [])
+
+  useEffect(() => {
+    loadMisesEnAvant()
+  }, [spotlightTick, loadMisesEnAvant])
+
+  useRefreshOnFocus(() => setSpotlightTick((n) => n + 1))
 
   const handleSuivi = async () => {
     if (!suiviNumero.trim()) return

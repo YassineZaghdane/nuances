@@ -27,6 +27,16 @@ const nextConfig = {
         headers: securityHeaders,
       },
       // Pas de cache CDN sur le catalogue : les badges (ERP) doivent se refléter tout de suite sur la vitrine.
+      // Deux motifs : `:path*` ne couvre pas toujours l’URL exacte `/api/produits` selon les versions Next.
+      {
+        source: '/api/produits',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'private, no-store, max-age=0, must-revalidate',
+          },
+        ],
+      },
       {
         source: '/api/produits/:path*',
         headers: [

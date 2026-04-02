@@ -10,6 +10,13 @@ import { Prisma } from "@prisma/client";
 import { slugify } from "@/lib/utils";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+const NO_STORE = {
+  "Cache-Control": "private, no-store, max-age=0, must-revalidate",
+} as const;
+
 const produitPostSchema = z.object({
   nom:         z.string().min(2).max(100),
   slug:        z.string().min(2).max(100).regex(/^[a-z0-9-]+$/).optional(),
@@ -106,14 +113,13 @@ export async function GET(req: Request) {
       prix: Number(p.prix),
     }));
 
-    return NextResponse.json(serialized, {
-      headers: {
-        "Cache-Control": "private, no-store, max-age=0, must-revalidate",
-      },
-    });
+    return NextResponse.json(serialized, { headers: NO_STORE });
   } catch (error: unknown) {
     console.error("[GET /api/produits]", error);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Erreur serveur" },
+      { status: 500, headers: NO_STORE }
+    );
   }
 }
 

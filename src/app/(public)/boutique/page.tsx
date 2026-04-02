@@ -4,6 +4,8 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/vitrine/ProductCard";
 import { useCartStore } from "@/store/cart-store";
+import { urlListeProduitsComplete, VITRINE_FETCH_INIT } from "@/lib/catalog-api";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 
 interface Categorie {
   id: string;
@@ -67,6 +69,7 @@ function BoutiquePageInner() {
     router.push(q ? `${pathname}?${q}` : pathname, { scroll: false });
   };
 
+  const [catalogueTick, setCatalogueTick] = useState(0);
   const [produits, setProduits] = useState<Produit[]>([]);
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [catActive, setCatActive] = useState("tous");
@@ -75,12 +78,14 @@ function BoutiquePageInner() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const { count, openCart } = useCartStore();
 
+  useRefreshOnFocus(() => setCatalogueTick((n) => n + 1));
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setFetchError(null);
 
-    fetch("/api/produits", { cache: "no-store" })
+    fetch(urlListeProduitsComplete(), VITRINE_FETCH_INIT)
       .then(async (r) => {
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {
@@ -119,7 +124,7 @@ function BoutiquePageInner() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [catalogueTick]);
 
   const parUnivers = useMemo(() => {
     if (typeFilter === "niche") {
