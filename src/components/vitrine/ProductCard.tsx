@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCartStore } from "@/store/cart-store";
 
@@ -28,6 +28,10 @@ const TAILLE_PRIX: Record<string, number> = {
   "50ml": 10,
   "100ml": 20,
 };
+
+// Cache simple pour éviter de re-télécharger la résolution Imgur
+// pour chaque carte (utile quand plusieurs cartes utilisent le même album).
+const imgurResolveCache = new Map<string, string>();
 
 const cardHoverEnter = (e: React.MouseEvent<HTMLElement>) => {
   const el = e.currentTarget as HTMLElement;
@@ -64,6 +68,48 @@ export function ProductCard({
 
   const taillesDispos = stocks?.filter((s) => s.quantite > 0) || [];
   const prixFinal = Number(prix) + (TAILLE_PRIX[selectedTaille] || 0);
+  const rawImg = images?.[0];
+  const [resolvedImg, setResolvedImg] = useState<string | undefined>(
+    rawImg
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!rawImg) return;
+
+    if (imgurResolveCache.has(rawImg)) {
+      setResolvedImg(imgurResolveCache.get(rawImg));
+      return;
+    }
+
+    // Résout uniquement les albums/galleries Imgur (les urls directes i.imgur.com passent sans changement).
+    const isImgurAlbum = /imgur\.com\/(a|gallery)\//i.test(rawImg);
+    if (!isImgurAlbum) {
+      setResolvedImg(rawImg);
+      imgurResolveCache.set(rawImg, rawImg);
+      return;
+    }
+
+    (async () => {
+      try {
+        const r = await fetch(
+          `/api/imgur/resolve-image?url=${encodeURIComponent(rawImg)}`
+        );
+        const d = await r.json().catch(() => ({}));
+        const nextSrc =
+          typeof d?.src === "string" && d.src ? d.src : rawImg;
+        if (cancelled) return;
+        setResolvedImg(nextSrc);
+        imgurResolveCache.set(rawImg, nextSrc);
+      } catch {
+        if (!cancelled) setResolvedImg(rawImg);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rawImg]);
 
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -201,7 +247,7 @@ export function ProductCard({
 
           {images?.[0] ? (
             <img
-              src={images[0]}
+              src={resolvedImg || images[0]}
               alt={nom}
               style={{
                 width: "100%",
