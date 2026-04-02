@@ -25,7 +25,15 @@ const TAILLE_PRIX: Record<string,number> = {
 }
 
 export default function FicheProduitPage() {
-  const { slug } = useParams()
+  const params = useParams()
+  const slugRaw = params?.slug
+  const slug =
+    typeof slugRaw === 'string'
+      ? slugRaw
+      : Array.isArray(slugRaw)
+        ? slugRaw[0]
+        : ''
+
   const [produit, setProduit] = useState<Produit | null>(null)
   const [loading, setLoading] = useState(true)
   const [imgActive, setImgActive] = useState(0)
@@ -36,15 +44,98 @@ export default function FicheProduitPage() {
   const { addItem } = useCartStore()
 
   useEffect(() => {
-    fetch(`/api/produits/${slug}`)
-      .then(r => r.json())
-      .then(d => {
-        setProduit(d)
-        const firstDispo = d.stocks?.find((s: StockItem) => s.quantite > 0)
+    if (!slug) {
+      setProduit(null)
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setLoading(true)
+    setProduit(null)
+    setImgActive(0)
+    setResolvedSrc(null)
+    setTaille('')
+    setQte(1)
+
+    fetch(`/api/produits/${encodeURIComponent(slug)}`)
+      .then(async (r) => {
+        const d = await r.json().catch(() => ({}))
+        if (cancelled) return
+        const ok =
+          r.ok &&
+          d &&
+          typeof d === 'object' &&
+          typeof d.id === 'string' &&
+          Array.isArray(d.stocks)
+        if (!ok) {
+          setProduit(null)
+          return
+        }
+        setProduit(d as Produit)
+        const firstDispo = (d.stocks as StockItem[]).find(
+          (s) => s.quantite > 0
+        )
         if (firstDispo) setTaille(firstDispo.taille)
-        setLoading(false)
       })
+      .catch(() => {
+        if (!cancelled) setProduit(null)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [slug])
+
+  const galleryImageUrl = produit?.images?.[imgActive] ?? null
+
+  useEffect(() => {
+    // Imgur renvoie souvent des albums (ex: https://imgur.com/a/xxx) que <img> ne sait pas afficher.
+    // On résout via /api/imgur/resolve-image (og:image).
+    if (!galleryImageUrl) {
+      setResolvedSrc(null)
+      return
+    }
+
+    const cacheKey = `imgur-resolved:${galleryImageUrl}`
+    const cached =
+      typeof window !== 'undefined' ? window.sessionStorage.getItem(cacheKey) : null
+    if (cached) {
+      setResolvedSrc(cached)
+      return
+    }
+
+    let cancelled = false
+    ;(async () => {
+      try {
+        if (!/imgur\.com\/(a|gallery)\//i.test(galleryImageUrl)) {
+          if (!cancelled) setResolvedSrc(galleryImageUrl)
+          return
+        }
+
+        const r = await fetch(
+          `/api/imgur/resolve-image?url=${encodeURIComponent(galleryImageUrl)}`
+        )
+        const d = await r.json().catch(() => ({}))
+        const nextSrc =
+          typeof d?.src === 'string' && d.src ? d.src : galleryImageUrl
+
+        if (!cancelled) {
+          setResolvedSrc(nextSrc)
+          window.sessionStorage.setItem(cacheKey, nextSrc)
+        }
+      } catch {
+        if (!cancelled) setResolvedSrc(galleryImageUrl)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [galleryImageUrl])
 
   if (loading) return (
     <div style={{
@@ -62,7 +153,8 @@ export default function FicheProduitPage() {
     </div>
   )
 
-  const stockTaille = produit.stocks.find(s => s.taille === taille)
+  const stocks = Array.isArray(produit.stocks) ? produit.stocks : []
+  const stockTaille = stocks.find((s) => s.taille === taille)
   const dispo = stockTaille?.quantite || 0
   const prixBase = Number(produit.prix)
   const prixFinal = prixBase + (TAILLE_PRIX[taille] || 0)
@@ -172,7 +264,7 @@ export default function FicheProduitPage() {
               </div>
               {images.length > 0 ? (
                 <img
-                  src={resolvedSrc || activeImgRaw}
+                  src={resolvedSrc || galleryImageUrl || ''}
                   alt={produit.nom}
                   style={{
                     width:'100%',
@@ -214,7 +306,7 @@ export default function FicheProduitPage() {
             <div style={{ marginBottom:'1.5rem' }}>
               <div style={{ fontSize:'0.65rem', letterSpacing:'0.2em', textTransform:'uppercase', color:'#8A7B68', marginBottom:'0.8rem' }}>Choisir le format</div>
               <div style={{ display:'flex', gap:'0.6rem', flexWrap:'wrap' }}>
-                {produit.stocks.map(s => {
+                {stocks.map(s => {
                   const p = prixBase + (TAILLE_PRIX[s.taille] || 0)
                   const isSelected = taille === s.taille
                   const isDispo = s.quantite > 0
