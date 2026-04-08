@@ -45,6 +45,9 @@ model Produit {
   notes          String?
   prix           Decimal          @db.Decimal(10, 3)
   prixAchat      Decimal?         @db.Decimal(10, 3)
+  prix30ml       Decimal?         @db.Decimal(10, 3)
+  prix50ml       Decimal?         @db.Decimal(10, 3)
+  prix100ml      Decimal?         @db.Decimal(10, 3)
   images         String[]
   actif          Boolean          @default(true)
   featured       Boolean          @default(false)
@@ -219,6 +222,31 @@ model Facture {
   montantTTC Decimal  @db.Decimal(10, 3)
   pdfUrl     String?
   createdAt  DateTime @default(now())
+}
+
+// ─── MATIÈRES PREMIÈRES ─────────────────────────
+model MatierePremiere {
+  id          String             @id @default(cuid())
+  nom         String             @unique
+  description String?
+  stockMl     Float              @default(0)
+  unite       String             @default("ml")  // "ml" ou "unité"
+  seuilAlerte Float              @default(500)
+  isDefault   Boolean            @default(false) // alcool + flacons par défaut
+  mouvements  MouvementMatiere[]
+  updatedAt   DateTime           @updatedAt
+}
+
+model MouvementMatiere {
+  id         String          @id @default(cuid())
+  matiereId  String
+  matiere    MatierePremiere @relation(fields: [matiereId], references: [id])
+  type       TypeMouvement
+  quantiteMl Float
+  raison     String?
+  userId     String?
+  commandeId String?
+  createdAt  DateTime        @default(now())
 }
 
 // ─── DÉPENSES ───────────────────────────────────

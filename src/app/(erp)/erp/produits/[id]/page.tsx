@@ -8,7 +8,7 @@ export default async function ErpProduitDetailPage({ params }: { params: Promise
   const { id } = await params;
   const produit = await prisma.produit.findUnique({
     where: { id },
-    include: { stocks: true },
+    include: { stockKilo: true },
   });
   if (!produit) notFound();
   const produitForForm = {
@@ -19,6 +19,9 @@ export default async function ErpProduitDetailPage({ params }: { params: Promise
     notes: produit.notes ?? undefined,
     prix: Number(produit.prix),
     prixAchat: produit.prixAchat ? Number(produit.prixAchat) : undefined,
+    prix30ml:  produit.prix30ml  != null ? Number(produit.prix30ml)  : undefined,
+    prix50ml:  produit.prix50ml  != null ? Number(produit.prix50ml)  : undefined,
+    prix100ml: produit.prix100ml != null ? Number(produit.prix100ml) : undefined,
     images: produit.images,
     actif: produit.actif,
     featured: produit.featured,
@@ -27,12 +30,9 @@ export default async function ErpProduitDetailPage({ params }: { params: Promise
     offre: produit.offre,
     offreLabel: produit.offreLabel ?? undefined,
     categorieId: produit.categorieId,
-    stocks: produit.stocks.map((s) => ({
-      taille: s.taille,
-      quantite: s.quantite,
-      seuilAlerte: s.seuilAlerte,
-      prixVente: s.prixVente != null ? Number(s.prixVente) : undefined,
-    })),
+    stockKilo: produit.stockKilo
+      ? { stockMlTotal: produit.stockKilo.stockMlTotal }
+      : undefined,
   };
   return (
     <div className="space-y-6">

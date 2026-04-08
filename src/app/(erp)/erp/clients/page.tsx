@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ErpPage, ErpTable } from '@/components/erp/ErpPage'
+import { ErpPage, ErpPagination, ErpTable } from '@/components/erp/ErpPage'
 
 const SOURCE_COLORS: Record<string, string> = {
   INSTAGRAM: '#C13584',
@@ -26,6 +26,8 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<ClientRow[]>([])
   const [search, setSearch] = useState('')
   const [source, setSource] = useState('Tous')
+  const [page, setPage] = useState(1)
+  const PER = 20
 
   useEffect(() => {
     fetch('/api/clients')
@@ -40,6 +42,7 @@ export default function ClientsPage() {
     const matchSource = source === 'Tous' || c.source === source
     return matchSearch && matchSource
   })
+  const paginated = filtered.slice((page - 1) * PER, page * PER)
 
   return (
     <ErpPage
@@ -49,7 +52,7 @@ export default function ClientsPage() {
         <input
           placeholder="Rechercher…"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
           style={{
             padding: '0.38rem 0.9rem', fontSize: '0.78rem',
             border: '1px solid #EDE5D4', background: '#FDFAF5',
@@ -64,7 +67,7 @@ export default function ClientsPage() {
           <button
             key={s}
             type="button"
-            onClick={() => setSource(s)}
+            onClick={() => { setSource(s); setPage(1); }}
             style={{
               padding: '0.35rem 0.8rem', fontSize: '0.68rem', letterSpacing: '0.06em',
               background: source === s ? '#1A1208' : '#FDFAF5',
@@ -79,8 +82,11 @@ export default function ClientsPage() {
         ))}
       </div>
 
-      <ErpTable headers={['Client', 'Téléphone', 'Ville', 'Source', 'Commandes', 'CA total', '']}>
-        {filtered.map(c => (
+      <ErpTable
+        headers={['Client', 'Téléphone', 'Ville', 'Source', 'Commandes', 'CA total', '']}
+        footer={<ErpPagination page={page} total={filtered.length} perPage={PER} onPage={setPage} />}
+      >
+        {paginated.map(c => (
           <tr
             key={c.id}
             style={{ borderBottom: '1px solid #F0EBE0', transition: 'background 0.15s' }}

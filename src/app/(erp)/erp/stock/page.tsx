@@ -1,9 +1,29 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import { ErpPage, ErpTable } from '@/components/erp/ErpPage'
+import { ErpPage, ErpPagination, ErpTable } from '@/components/erp/ErpPage'
 
-type Tab = 'parfums' | 'flacons' | 'echantillons'
+type Tab = 'parfums' | 'matieres' | 'flacons' | 'echantillons'
+
+interface MatierePremiere {
+  id: string
+  nom: string
+  description?: string
+  stockMl: number
+  unite: string       // "ml" | "unité"
+  isDefault: boolean
+  seuilAlerte: number
+  updatedAt: string
+}
+
+interface StockKilo {
+  id: string
+  produitId: string
+  stockMlTotal: number
+  stockKgTotal: number
+  updatedAt: string
+  produit: { id: string; nom: string; slug: string }
+}
 
 const FLACONS_VIDES = [
   { ref: 'FL-30', label: 'Flacon verre 30ml', type: 'flacon', ml: 30 },
@@ -20,6 +40,11 @@ const FLACONS_VIDES = [
 export default function StockPage() {
   const [tab, setTab] = useState<Tab>('parfums')
   const [stocks, setStocks] = useState<{ id: string; taille: string; quantite: number; seuilAlerte: number; updatedAt?: string; produit?: { id: string; nom: string } }[]>([])
+  const [stocksKilo, setStocksKilo] = useState<StockKilo[]>([])
+  const [kiloModal, setKiloModal] = useState<{ open: boolean; stockKilo: StockKilo; type: 'ENTREE' | 'SORTIE' | 'AJUSTEMENT' } | null>(null)
+  const [mvtKiloQte, setMvtKiloQte] = useState(100)
+  const [mvtKiloRaison, setMvtKiloRaison] = useState('')
+  const [matieres, setMatieres] = useState<MatierePremiere[]>([])
   const [flaconsQte, setFlaconsQte] = useState<Record<string, number>>({})
   const [editingFlacon, setEditingFlacon] = useState<string | null>(null)
   const [modal, setModal] = useState<{
@@ -28,14 +53,34 @@ export default function StockPage() {
     taille: string
     type: 'ENTREE' | 'SORTIE' | 'AJUSTEMENT'
   } | null>(null)
+  const [matiereModal, setMatiereModal] = useState<{
+    open: boolean
+    matiere: MatierePremiere
+    type: 'ENTREE' | 'SORTIE' | 'AJUSTEMENT'
+  } | null>(null)
+  const [nouvelleMatiereForm, setNouvelleMatiereForm] = useState<{ open: boolean; nom: string; description: string; stockMl: string; seuilAlerte: string; unite: string }>({ open: false, nom: '', description: '', stockMl: '', seuilAlerte: '500', unite: 'ml' })
   const [mvtQte, setMvtQte] = useState(1)
   const [mvtRaison, setMvtRaison] = useState('')
+  const [mvtMatiereQte, setMvtMatiereQte] = useState(100)
+  const [mvtMatiereRaison, setMvtMatiereRaison] = useState('')
+
+  const fetchMatieres = () =>
+    fetch('/api/matieres').then(r => r.json()).then(d => setMatieres(Array.isArray(d) ? d : [])).catch(() => {})
+
+  const fetchStocksKilo = () =>
+    fetch('/api/stock/kilo').then(r => r.json()).then(d => setStocksKilo(Array.isArray(d) ? d : [])).catch(() => {})
 
   useEffect(() => {
+    // Seed les 4 articles par défaut (idempotent)
+    fetch('/api/stock/defaults', { method: 'POST' })
+      .then(() => fetchMatieres())
+      .catch(() => fetchMatieres())
+
     fetch('/api/stock')
       .then(r => r.json())
       .then(d => setStocks(Array.isArray(d) ? d : []))
       .catch(() => setStocks([]))
+    fetchStocksKilo()
     const saved = typeof window !== 'undefined' ? localStorage.getItem('nuances_flacons') : null
     if (saved) try { setFlaconsQte(JSON.parse(saved)) } catch { /* ignore */ }
   }, [])
@@ -47,8 +92,38 @@ export default function StockPage() {
     setEditingFlacon(null)
   }
 
+  const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const PER = 20
+
   const parfums = stocks
   const alertes = parfums.filter(s => s.quantite <= (s.seuilAlerte || 5))
+
+  const filteredKilo = stocksKilo.filter(s =>
+    s.produit.nom.toLowerCase().includes(search.toLowerCase())
+  )
+  const filteredMatieres = matieres.filter(m =>
+    m.nom.toLowerCase().includes(search.toLowerCase())
+  )
+  const paginatedKilo = filteredKilo.slice((page - 1) * PER, page * PER)
+  const paginatedMatieres = filteredMatieres.slice((page - 1) * PER, page * PER)
+
+  const enregistrerMouvementKilo = async () => {
+    if (!kiloModal) return
+    await fetch('/api/stock/kilo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        produitId: kiloModal.stockKilo.produitId,
+        stockMl: mvtKiloQte,
+        type: kiloModal.type,
+      }),
+    })
+    fetchStocksKilo()
+    setKiloModal(null)
+    setMvtKiloQte(100)
+    setMvtKiloRaison('')
+  }
 
   const enregistrerMouvement = async () => {
     if (!modal) return
@@ -69,6 +144,31 @@ export default function StockPage() {
     setMvtRaison('')
   }
 
+  const enregistrerMouvementMatiere = async () => {
+    if (!matiereModal) return
+    await fetch(`/api/matieres/${matiereModal.matiere.id}/mouvement`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: matiereModal.type, quantiteMl: mvtMatiereQte, raison: mvtMatiereRaison }),
+    })
+    fetchMatieres()
+    setMatiereModal(null)
+    setMvtMatiereQte(100)
+    setMvtMatiereRaison('')
+  }
+
+  const creerMatiere = async () => {
+    const { nom, description, stockMl, seuilAlerte, unite } = nouvelleMatiereForm
+    if (!nom.trim()) return
+    await fetch('/api/matieres', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nom: nom.trim(), description, stockMl: Number(stockMl) || 0, seuilAlerte: Number(seuilAlerte) || 500, unite }),
+    })
+    fetchMatieres()
+    setNouvelleMatiereForm({ open: false, nom: '', description: '', stockMl: '', seuilAlerte: '500', unite: 'ml' })
+  }
+
   const verifierAlertesEmail = async () => {
     const res = await fetch("/api/stock/alertes");
     const data = await res.json().catch(() => ({}));
@@ -82,7 +182,19 @@ export default function StockPage() {
       title="Stock"
       subtitle={alertes.length > 0 ? `⚠ ${alertes.length} alerte${alertes.length > 1 ? 's' : ''}` : 'Tout est OK'}
       actions={
-        <button
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <input
+            placeholder="Rechercher…"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            style={{
+              padding: '0.38rem 0.9rem', fontSize: '0.78rem',
+              border: '1px solid #EDE5D4', background: '#FDFAF5',
+              color: '#1A1208', outline: 'none', width: '200px',
+              fontFamily: 'Jost,sans-serif', borderRadius: '3px',
+            }}
+          />
+          <button
           type="button"
           onClick={verifierAlertesEmail}
           style={{
@@ -99,18 +211,20 @@ export default function StockPage() {
         >
           ⚠ Vérifier alertes
         </button>
+        </div>
       }
     >
       <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', borderBottom: '1px solid #EDE5D4' }}>
         {[
           { key: 'parfums' as Tab, label: '💧 Parfums' },
+          { key: 'matieres' as Tab, label: '🧪 Matières premières' },
           { key: 'flacons' as Tab, label: '🧴 Flacons & Emballages' },
-          { key: 'echantillons' as Tab, label: '🧪 Échantillons' },
+          { key: 'echantillons' as Tab, label: '📦 Échantillons' },
         ].map(t => (
           <button
             key={t.key}
             type="button"
-            onClick={() => setTab(t.key)}
+            onClick={() => { setTab(t.key); setPage(1); }}
             style={{
               padding: '0.7rem 1.4rem', fontSize: '0.72rem',
               letterSpacing: '0.06em', background: 'none', border: 'none',
@@ -126,11 +240,20 @@ export default function StockPage() {
       </div>
 
       {tab === 'parfums' && (
-        <ErpTable headers={['Produit', 'Format', 'Stock', 'Seuil alerte', 'État', 'Mise à jour', 'Mouvement']}>
-          {parfums.map((s, i) => {
-            const pct = Math.min(100, (s.quantite / Math.max((s.seuilAlerte || 5) * 3, 10)) * 100)
-            const color = s.quantite <= (s.seuilAlerte || 5) ? '#8B3A3A' : s.quantite <= (s.seuilAlerte || 5) * 2 ? '#B8860B' : '#2E7D52'
-            const bg = s.quantite <= (s.seuilAlerte || 5) ? '#FAEAEA' : s.quantite <= (s.seuilAlerte || 5) * 2 ? '#FFF8E6' : '#E4F2EB'
+        <ErpTable
+          headers={['Produit', 'Stock essence (ml)', 'Stock (kg)', 'État', 'Mise à jour', 'Mouvement']}
+          footer={<ErpPagination page={page} total={filteredKilo.length} perPage={PER} onPage={setPage} />}
+        >
+          {filteredKilo.length === 0 && (
+            <tr><td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#C4B090', fontSize: '0.82rem' }}>
+              {search ? 'Aucun résultat' : 'Aucun stock d\'essence enregistré — créez un produit avec un stock initial.'}
+            </td></tr>
+          )}
+          {paginatedKilo.map((s) => {
+            const seuil = 100 // seuil par défaut: 100ml
+            const color = s.stockMlTotal <= seuil ? '#8B3A3A' : s.stockMlTotal <= seuil * 3 ? '#B8860B' : '#2E7D52'
+            const bg = s.stockMlTotal <= seuil ? '#FAEAEA' : s.stockMlTotal <= seuil * 3 ? '#FFF8E6' : '#E4F2EB'
+            const pct = Math.min(100, (s.stockMlTotal / Math.max(seuil * 10, 100)) * 100)
             return (
               <tr
                 key={s.id}
@@ -139,25 +262,24 @@ export default function StockPage() {
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
               >
                 <td style={{ padding: '0.85rem 1rem' }}>
-                  <div style={{ fontSize: '0.85rem', color: '#1A1208', fontWeight: 500 }}>{s.produit?.nom ?? '—'}</div>
-                </td>
-                <td style={{ padding: '0.85rem 1rem' }}>
-                  <span style={{ background: 'rgba(196,150,10,0.1)', color: '#C4960A', padding: '0.15rem 0.5rem', fontSize: '0.68rem', fontWeight: 500, borderRadius: '3px' }}>{s.taille}</span>
+                  <div style={{ fontSize: '0.85rem', color: '#1A1208', fontWeight: 500 }}>{s.produit.nom}</div>
                 </td>
                 <td style={{ padding: '0.85rem 1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                     <div style={{ width: '80px', height: '5px', background: '#EDE5D4', borderRadius: '3px', overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg,${color},${color}99)`, borderRadius: '3px', transition: 'width 0.6s ease' }} />
                     </div>
-                    <span style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '1.1rem', color: '#1A1208' }}>{s.quantite}</span>
+                    <span style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '1.1rem', color: '#1A1208' }}>
+                      {s.stockMlTotal.toLocaleString('fr-FR')} ml
+                    </span>
                   </div>
                 </td>
                 <td style={{ padding: '0.85rem 1rem' }}>
-                  <span style={{ fontSize: '0.78rem', color: '#8A7B68' }}>{s.seuilAlerte ?? 5}</span>
+                  <span style={{ fontSize: '0.82rem', color: '#8A7B68' }}>{s.stockKgTotal.toFixed(3)} kg</span>
                 </td>
                 <td style={{ padding: '0.85rem 1rem' }}>
                   <span style={{ background: bg, color, padding: '0.18rem 0.55rem', fontSize: '0.62rem', borderRadius: '3px', fontWeight: 500 }}>
-                    {s.quantite <= (s.seuilAlerte || 5) ? '⚠ Bas' : s.quantite <= (s.seuilAlerte || 5) * 2 ? '~ Moyen' : '✓ OK'}
+                    {s.stockMlTotal <= seuil ? '⚠ Bas' : s.stockMlTotal <= seuil * 3 ? '~ Moyen' : '✓ OK'}
                   </span>
                 </td>
                 <td style={{ padding: '0.85rem 1rem' }}>
@@ -167,15 +289,158 @@ export default function StockPage() {
                 </td>
                 <td style={{ padding: '0.85rem 1rem' }}>
                   <div style={{ display:'flex', gap:'0.3rem' }}>
-                    <button onClick={() => { if (s.produit?.id) { setModal({ open:true, produitId:s.produit.id, taille:s.taille, type:'ENTREE' }); setMvtQte(1) } }} style={{ fontSize:'0.62rem', background:'#E4F2EB', color:'#2E7D52', border:'1px solid #B8DFC8', padding:'0.18rem 0.45rem', cursor:'pointer', borderRadius:'3px' }}>+ Entrée</button>
-                    <button onClick={() => { if (s.produit?.id) { setModal({ open:true, produitId:s.produit.id, taille:s.taille, type:'SORTIE' }); setMvtQte(1) } }} style={{ fontSize:'0.62rem', background:'#FAEAEA', color:'#8B3A3A', border:'1px solid #DFB8B8', padding:'0.18rem 0.45rem', cursor:'pointer', borderRadius:'3px' }}>− Sortie</button>
-                    <button onClick={() => { if (s.produit?.id) { setModal({ open:true, produitId:s.produit.id, taille:s.taille, type:'AJUSTEMENT' }); setMvtQte(s.quantite) } }} style={{ fontSize:'0.62rem', background:'#F4EFF9', color:'#7A5C9B', border:'1px solid #C8B4E0', padding:'0.18rem 0.45rem', cursor:'pointer', borderRadius:'3px' }}>≡ Ajust.</button>
+                    <button onClick={() => { setKiloModal({ open:true, stockKilo:s, type:'ENTREE' }); setMvtKiloQte(100) }} style={{ fontSize:'0.62rem', background:'#E4F2EB', color:'#2E7D52', border:'1px solid #B8DFC8', padding:'0.18rem 0.45rem', cursor:'pointer', borderRadius:'3px' }}>+ Entrée</button>
+                    <button onClick={() => { setKiloModal({ open:true, stockKilo:s, type:'SORTIE' }); setMvtKiloQte(100) }} style={{ fontSize:'0.62rem', background:'#FAEAEA', color:'#8B3A3A', border:'1px solid #DFB8B8', padding:'0.18rem 0.45rem', cursor:'pointer', borderRadius:'3px' }}>− Sortie</button>
+                    <button onClick={() => { setKiloModal({ open:true, stockKilo:s, type:'AJUSTEMENT' }); setMvtKiloQte(Math.round(s.stockMlTotal)) }} style={{ fontSize:'0.62rem', background:'#F4EFF9', color:'#7A5C9B', border:'1px solid #C8B4E0', padding:'0.18rem 0.45rem', cursor:'pointer', borderRadius:'3px' }}>≡ Ajust.</button>
                   </div>
                 </td>
               </tr>
             )
           })}
         </ErpTable>
+      )}
+
+      {tab === 'matieres' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <p style={{ fontSize: '0.78rem', color: '#8A7B68', margin: 0 }}>
+              Alcool et autres matières consommées automatiquement lors des ventes.<br/>
+              <span style={{ color: '#C4B090', fontSize: '0.72rem' }}>30ml → 11ml parfum + 19ml alcool · 50ml → 18ml + 32ml · 100ml → 33ml + 67ml</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => setNouvelleMatiereForm(f => ({ ...f, open: !f.open }))}
+              style={{ padding: '0.45rem 1rem', background: '#1A1208', color: 'white', border: 'none', cursor: 'pointer', fontSize: '0.72rem', fontFamily: 'Jost,sans-serif', letterSpacing: '0.08em', borderRadius: '3px' }}
+            >+ Nouvelle matière</button>
+          </div>
+
+          {nouvelleMatiereForm.open && (
+            <div style={{ background: '#FDFAF5', border: '1px solid #EDE5D4', borderRadius: '6px', padding: '1.5rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px 120px 120px', gap: '0.8rem', marginBottom: '1rem' }}>
+                {[
+                  { label: 'Nom *', key: 'nom', placeholder: 'ex: Bouchons' },
+                  { label: 'Description', key: 'description', placeholder: 'optionnel' },
+                ].map(f => (
+                  <div key={f.key}>
+                    <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C4B090', marginBottom: '0.4rem' }}>{f.label}</div>
+                    <input
+                      type="text"
+                      value={(nouvelleMatiereForm as unknown as Record<string, string>)[f.key]}
+                      onChange={e => setNouvelleMatiereForm(fm => ({ ...fm, [f.key]: e.target.value }))}
+                      placeholder={f.placeholder}
+                      style={{ width: '100%', padding: '0.6rem', border: '1px solid #EDE5D4', borderRadius: '3px', fontFamily: 'Jost,sans-serif', fontSize: '0.83rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                ))}
+                <div>
+                  <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C4B090', marginBottom: '0.4rem' }}>Unité</div>
+                  <select
+                    value={nouvelleMatiereForm.unite}
+                    onChange={e => setNouvelleMatiereForm(fm => ({ ...fm, unite: e.target.value }))}
+                    style={{ width: '100%', padding: '0.6rem', border: '1px solid #EDE5D4', borderRadius: '3px', fontFamily: 'Jost,sans-serif', fontSize: '0.83rem', outline: 'none', background: 'white' }}
+                  >
+                    <option value="ml">ml</option>
+                    <option value="unité">unité</option>
+                  </select>
+                </div>
+                {[
+                  { label: `Stock initial (${nouvelleMatiereForm.unite})`, key: 'stockMl', placeholder: '0' },
+                  { label: `Seuil alerte (${nouvelleMatiereForm.unite})`, key: 'seuilAlerte', placeholder: nouvelleMatiereForm.unite === 'unité' ? '10' : '500' },
+                ].map(f => (
+                  <div key={f.key}>
+                    <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C4B090', marginBottom: '0.4rem' }}>{f.label}</div>
+                    <input
+                      type="number"
+                      min="0"
+                      value={(nouvelleMatiereForm as unknown as Record<string, string>)[f.key]}
+                      onChange={e => setNouvelleMatiereForm(fm => ({ ...fm, [f.key]: e.target.value }))}
+                      placeholder={f.placeholder}
+                      style={{ width: '100%', padding: '0.6rem', border: '1px solid #EDE5D4', borderRadius: '3px', fontFamily: 'Jost,sans-serif', fontSize: '0.83rem', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: '0.6rem' }}>
+                <button type="button" onClick={creerMatiere} style={{ padding: '0.6rem 1.2rem', background: 'linear-gradient(135deg,#C4960A,#A07808)', color: 'white', border: 'none', cursor: 'pointer', fontSize: '0.72rem', fontFamily: 'Jost,sans-serif', letterSpacing: '0.1em', borderRadius: '3px' }}>Créer</button>
+                <button type="button" onClick={() => setNouvelleMatiereForm(f => ({ ...f, open: false }))} style={{ padding: '0.6rem 1rem', background: 'none', border: '1px solid #EDE5D4', cursor: 'pointer', fontSize: '0.72rem', color: '#8A7B68', borderRadius: '3px' }}>Annuler</button>
+              </div>
+            </div>
+          )}
+
+          <ErpTable
+            headers={['Article', 'Stock', 'Seuil alerte', 'État', 'Mise à jour', 'Mouvement']}
+            footer={<ErpPagination page={page} total={filteredMatieres.length} perPage={PER} onPage={setPage} />}
+          >
+            {filteredMatieres.length === 0 && (
+              <tr><td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#C4B090', fontSize: '0.82rem' }}>
+                {search ? 'Aucun résultat' : 'Aucune matière première enregistrée.'}
+              </td></tr>
+            )}
+            {paginatedMatieres.map(m => {
+              const unite = m.unite || 'ml'
+              const pct = Math.min(100, (m.stockMl / Math.max(m.seuilAlerte * 3, 1)) * 100)
+              const enAlerte = m.stockMl <= m.seuilAlerte
+              const color = enAlerte ? '#8B3A3A' : m.stockMl <= m.seuilAlerte * 2 ? '#B8860B' : '#2E7D52'
+              const bg = enAlerte ? '#FAEAEA' : m.stockMl <= m.seuilAlerte * 2 ? '#FFF8E6' : '#E4F2EB'
+              const icon = m.nom.toLowerCase().includes('alcool') ? '🧪'
+                : m.nom.toLowerCase().includes('flacon') ? '🧴' : '📦'
+              return (
+                <tr key={m.id} style={{ borderBottom: '1px solid #F0EBE0' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#FAF7F2' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                >
+                  <td style={{ padding: '0.85rem 1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '1rem' }}>{icon}</span>
+                      <div>
+                        <div style={{ fontSize: '0.85rem', color: '#1A1208', fontWeight: 500 }}>
+                          {m.nom}
+                          {m.isDefault && <span style={{ marginLeft: '0.4rem', fontSize: '0.58rem', background: 'rgba(196,150,10,0.12)', color: '#C4960A', padding: '0.1rem 0.4rem', borderRadius: '3px', fontWeight: 500 }}>DÉFAUT</span>}
+                        </div>
+                        {m.description && <div style={{ fontSize: '0.7rem', color: '#C4B090' }}>{m.description}</div>}
+                      </div>
+                    </div>
+                  </td>
+                  <td style={{ padding: '0.85rem 1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                      <div style={{ width: '80px', height: '5px', background: '#EDE5D4', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: `linear-gradient(90deg,${color},${color}99)`, borderRadius: '3px' }} />
+                      </div>
+                      <span style={{ fontFamily: 'Cormorant Garamond, serif', fontSize: '1.1rem', color: '#1A1208' }}>
+                        {m.stockMl.toLocaleString('fr-FR')} {unite}
+                      </span>
+                    </div>
+                  </td>
+                  <td style={{ padding: '0.85rem 1rem' }}>
+                    <span style={{ fontSize: '0.78rem', color: '#8A7B68' }}>{m.seuilAlerte.toLocaleString('fr-FR')} {unite}</span>
+                  </td>
+                  <td style={{ padding: '0.85rem 1rem' }}>
+                    <span style={{ background: bg, color, padding: '0.18rem 0.55rem', fontSize: '0.62rem', borderRadius: '3px', fontWeight: 500 }}>
+                      {enAlerte ? '⚠ Bas' : m.stockMl <= m.seuilAlerte * 2 ? '~ Moyen' : '✓ OK'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0.85rem 1rem' }}>
+                    <span style={{ fontSize: '0.72rem', color: '#C4B090' }}>{new Date(m.updatedAt).toLocaleDateString('fr-FR')}</span>
+                  </td>
+                  <td style={{ padding: '0.85rem 1rem' }}>
+                    <div style={{ display: 'flex', gap: '0.3rem' }}>
+                      <button onClick={() => { setMatiereModal({ open: true, matiere: m, type: 'ENTREE' }); setMvtMatiereQte(unite === 'unité' ? 10 : 100) }} style={{ fontSize: '0.62rem', background: '#E4F2EB', color: '#2E7D52', border: '1px solid #B8DFC8', padding: '0.18rem 0.45rem', cursor: 'pointer', borderRadius: '3px' }}>+ Entrée</button>
+                      <button onClick={() => { setMatiereModal({ open: true, matiere: m, type: 'SORTIE' }); setMvtMatiereQte(unite === 'unité' ? 1 : 100) }} style={{ fontSize: '0.62rem', background: '#FAEAEA', color: '#8B3A3A', border: '1px solid #DFB8B8', padding: '0.18rem 0.45rem', cursor: 'pointer', borderRadius: '3px' }}>− Sortie</button>
+                      <button onClick={() => { setMatiereModal({ open: true, matiere: m, type: 'AJUSTEMENT' }); setMvtMatiereQte(m.stockMl) }} style={{ fontSize: '0.62rem', background: '#F4EFF9', color: '#7A5C9B', border: '1px solid #C8B4E0', padding: '0.18rem 0.45rem', cursor: 'pointer', borderRadius: '3px' }}>≡ Ajust.</button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+            {matieres.length === 0 && (
+              <tr>
+                <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#C4B090', fontSize: '0.82rem' }}>
+                  Aucune matière première — cliquez sur «+ Nouvelle matière» pour en ajouter.
+                </td>
+              </tr>
+            )}
+          </ErpTable>
+        </div>
       )}
 
       {tab === 'flacons' && (
@@ -327,6 +592,75 @@ export default function StockPage() {
             <div style={{ display:'flex', gap:'0.8rem' }}>
               <button onClick={() => setModal(null)} style={{ flex:1, padding:'0.75rem', background:'none', border:'1px solid #EDE5D4', cursor:'pointer', fontFamily:'Jost,sans-serif', fontSize:'0.72rem', color:'#8A7B68', borderRadius:'3px' }}>Annuler</button>
               <button onClick={enregistrerMouvement} style={{ flex:2, padding:'0.75rem', background:'#1A1208', color:'white', border:'none', cursor:'pointer', fontFamily:'Jost,sans-serif', fontSize:'0.72rem', letterSpacing:'0.1em', textTransform:'uppercase', borderRadius:'3px' }}>Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {kiloModal?.open && (
+        <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(26,18,8,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'#FDFAF5', border:'1px solid #EDE5D4', borderRadius:'8px', padding:'2rem', width:'420px', boxShadow:'0 20px 60px rgba(26,18,8,0.2)' }}>
+            <h3 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.3rem', color:'#1A1208', marginBottom:'0.4rem' }}>{kiloModal.stockKilo.produit.nom}</h3>
+            <p style={{ fontSize:'0.72rem', color:'#C4B090', marginBottom:'1.5rem' }}>Stock actuel : {kiloModal.stockKilo.stockMlTotal.toLocaleString('fr-FR')} ml</p>
+            <div style={{ marginBottom:'1rem' }}>
+              <div style={{ fontSize:'0.62rem', letterSpacing:'0.15em', textTransform:'uppercase', color:'#C4B090', marginBottom:'0.5rem' }}>Type</div>
+              <div style={{ display:'flex', gap:'0.4rem' }}>
+                {(['ENTREE','SORTIE','AJUSTEMENT'] as const).map(t => (
+                  <button key={t} onClick={() => setKiloModal({...kiloModal, type:t})} style={{ flex:1, padding:'0.5rem', background: kiloModal.type === t ? '#1A1208' : '#F0EBE0', color: kiloModal.type === t ? 'white' : '#8A7B68', border:`1px solid ${kiloModal.type === t ? '#1A1208' : '#EDE5D4'}`, cursor:'pointer', fontSize:'0.68rem', fontFamily:'Jost,sans-serif', borderRadius:'3px' }}>{t}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginBottom:'1rem' }}>
+              <div style={{ fontSize:'0.62rem', letterSpacing:'0.15em', textTransform:'uppercase', color:'#C4B090', marginBottom:'0.5rem' }}>
+                {kiloModal.type === 'AJUSTEMENT' ? 'Nouveau stock (ml)' : 'Quantité (ml)'}
+              </div>
+              <input type="number" min="0" value={mvtKiloQte} onChange={e => setMvtKiloQte(parseFloat(e.target.value)||0)} style={{ width:'100%', padding:'0.7rem', border:'1px solid #EDE5D4', fontFamily:'Jost,sans-serif', fontSize:'0.88rem', outline:'none', borderRadius:'3px' }} />
+            </div>
+            <div style={{ marginBottom:'1.5rem' }}>
+              <div style={{ fontSize:'0.62rem', letterSpacing:'0.15em', textTransform:'uppercase', color:'#C4B090', marginBottom:'0.5rem' }}>Raison (optionnel)</div>
+              <input type="text" placeholder="Ex: Réception fournisseur..." value={mvtKiloRaison} onChange={e => setMvtKiloRaison(e.target.value)} style={{ width:'100%', padding:'0.7rem', border:'1px solid #EDE5D4', fontFamily:'Jost,sans-serif', fontSize:'0.88rem', outline:'none', borderRadius:'3px' }} />
+            </div>
+            <div style={{ display:'flex', gap:'0.8rem' }}>
+              <button onClick={() => setKiloModal(null)} style={{ flex:1, padding:'0.75rem', background:'none', border:'1px solid #EDE5D4', cursor:'pointer', fontFamily:'Jost,sans-serif', fontSize:'0.72rem', color:'#8A7B68', borderRadius:'3px' }}>Annuler</button>
+              <button onClick={enregistrerMouvementKilo} style={{ flex:2, padding:'0.75rem', background:'#1A1208', color:'white', border:'none', cursor:'pointer', fontFamily:'Jost,sans-serif', fontSize:'0.72rem', letterSpacing:'0.1em', textTransform:'uppercase', borderRadius:'3px' }}>Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {matiereModal?.open && (
+        <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(26,18,8,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'#FDFAF5', border:'1px solid #EDE5D4', borderRadius:'8px', padding:'2rem', width:'420px', boxShadow:'0 20px 60px rgba(26,18,8,0.2)' }}>
+            <h3 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.3rem', color:'#1A1208', marginBottom:'0.4rem' }}>{matiereModal.matiere.nom}</h3>
+            <p style={{ fontSize:'0.72rem', color:'#C4B090', marginBottom:'1.5rem' }}>
+              Stock actuel : {matiereModal.matiere.stockMl.toLocaleString('fr-FR')} {matiereModal.matiere.unite || 'ml'}
+            </p>
+            <div style={{ marginBottom:'1rem' }}>
+              <div style={{ fontSize:'0.62rem', letterSpacing:'0.15em', textTransform:'uppercase', color:'#C4B090', marginBottom:'0.5rem' }}>Type</div>
+              <div style={{ display:'flex', gap:'0.4rem' }}>
+                {(['ENTREE','SORTIE','AJUSTEMENT'] as const).map(t => (
+                  <button key={t} onClick={() => setMatiereModal({...matiereModal, type:t})} style={{ flex:1, padding:'0.5rem', background: matiereModal.type === t ? '#1A1208' : '#F0EBE0', color: matiereModal.type === t ? 'white' : '#8A7B68', border:`1px solid ${matiereModal.type === t ? '#1A1208' : '#EDE5D4'}`, cursor:'pointer', fontSize:'0.68rem', fontFamily:'Jost,sans-serif', borderRadius:'3px' }}>{t}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginBottom:'1rem' }}>
+              <div style={{ fontSize:'0.62rem', letterSpacing:'0.15em', textTransform:'uppercase', color:'#C4B090', marginBottom:'0.5rem' }}>
+                {matiereModal.type === 'AJUSTEMENT' ? 'Nouveau stock' : 'Quantité'} ({matiereModal.matiere.unite || 'ml'})
+              </div>
+              <input
+                type="number"
+                min="0"
+                step={matiereModal.matiere.unite === 'unité' ? '1' : '10'}
+                value={mvtMatiereQte}
+                onChange={e => setMvtMatiereQte(parseFloat(e.target.value) || 0)}
+                style={{ width:'100%', padding:'0.7rem', border:'1px solid #EDE5D4', fontFamily:'Jost,sans-serif', fontSize:'0.88rem', outline:'none', borderRadius:'3px' }}
+              />
+            </div>
+            <div style={{ marginBottom:'1.5rem' }}>
+              <div style={{ fontSize:'0.62rem', letterSpacing:'0.15em', textTransform:'uppercase', color:'#C4B090', marginBottom:'0.5rem' }}>Raison (optionnel)</div>
+              <input type="text" placeholder="Ex: Réception fournisseur..." value={mvtMatiereRaison} onChange={e => setMvtMatiereRaison(e.target.value)} style={{ width:'100%', padding:'0.7rem', border:'1px solid #EDE5D4', fontFamily:'Jost,sans-serif', fontSize:'0.88rem', outline:'none', borderRadius:'3px' }} />
+            </div>
+            <div style={{ display:'flex', gap:'0.8rem' }}>
+              <button onClick={() => setMatiereModal(null)} style={{ flex:1, padding:'0.75rem', background:'none', border:'1px solid #EDE5D4', cursor:'pointer', fontFamily:'Jost,sans-serif', fontSize:'0.72rem', color:'#8A7B68', borderRadius:'3px' }}>Annuler</button>
+              <button onClick={enregistrerMouvementMatiere} style={{ flex:2, padding:'0.75rem', background:'#1A1208', color:'white', border:'none', cursor:'pointer', fontFamily:'Jost,sans-serif', fontSize:'0.72rem', letterSpacing:'0.1em', textTransform:'uppercase', borderRadius:'3px' }}>Enregistrer</button>
             </div>
           </div>
         </div>

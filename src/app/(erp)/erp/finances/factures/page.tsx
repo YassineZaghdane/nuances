@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ErpPage } from '@/components/erp/ErpPage'
+import { ErpPage, ErpPagination } from '@/components/erp/ErpPage'
 
 interface Facture {
   id: string
@@ -17,6 +17,8 @@ export default function FacturesPage() {
   const [factures, setFactures] = useState<Facture[]>([])
   const [loading, setLoading]   = useState(true)
   const [search, setSearch]     = useState('')
+  const [page, setPage]         = useState(1)
+  const PER = 20
 
   useEffect(() => {
     // Utilise /api/commandes comme source des factures
@@ -43,6 +45,7 @@ export default function FacturesPage() {
     f.numero?.toLowerCase().includes(search.toLowerCase()) ||
     f.client?.nom?.toLowerCase().includes(search.toLowerCase())
   )
+  const paginated = filtered.slice((page - 1) * PER, page * PER)
 
   const totalCA = filtered.reduce((s, f) => s + f.montantTotal, 0)
   const nbLivrees = filtered.filter(f => f.statut === 'LIVREE').length
@@ -64,7 +67,7 @@ export default function FacturesPage() {
         <input
           placeholder="Rechercher…"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
           style={{
             padding: '0.38rem 0.9rem', fontSize: '0.78rem',
             border: '1px solid #EDE5D4', background: '#FDFAF5',
@@ -99,6 +102,7 @@ export default function FacturesPage() {
         ) : filtered.length === 0 ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: '#C4B090', fontFamily: 'Cormorant Garamond,serif', fontStyle: 'italic' }}>Aucune facture</div>
         ) : (
+          <>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#FAF7F2' }}>
@@ -108,7 +112,7 @@ export default function FacturesPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(f => {
+              {paginated.map(f => {
                 const st = STATUT_COLORS[f.statut] || { color: '#8A7B68', bg: '#F0EBE0', label: f.statut }
                 return (
                   <tr key={f.id}
@@ -160,6 +164,10 @@ export default function FacturesPage() {
               })}
             </tbody>
           </table>
+          <div style={{ padding: '0.9rem 1.5rem', borderTop: '1px solid #EDE5D4' }}>
+            <ErpPagination page={page} total={filtered.length} perPage={PER} onPage={setPage} />
+          </div>
+          </>
         )}
       </div>
     </ErpPage>

@@ -3,22 +3,21 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Categorie { id: string; nom: string }
-interface Stock { taille: string; quantite: number; seuilAlerte: number; prixVente?: number }
 
 interface Props {
   produit?: {
     id: string; nom: string; slug: string
     description?: string; notes?: string
     prix: number; prixAchat?: number
+    prix30ml?: number | null; prix50ml?: number | null; prix100ml?: number | null
     images: string[]; actif: boolean; featured: boolean
     exclusif: boolean; nouveaute: boolean
     offre: boolean; offreLabel?: string
-    categorieId?: string; stocks?: Stock[]
+    categorieId?: string
+    stockKilo?: { stockMlTotal: number }
   }
   mode: 'creation' | 'edition'
 }
-
-const TAILLES = ['5ml','10ml','15ml','30ml','50ml','100ml']
 
 const inputStyle = {
   width: '100%',
@@ -66,7 +65,10 @@ export function ProduitForm({ produit, mode }: Props) {
     offre:       produit?.offre       ?? false,
     offreLabel:  produit?.offreLabel  || '',
     categorieId: produit?.categorieId || '',
-    stocks:      produit?.stocks      || [] as Stock[],
+    prix30ml:    produit?.prix30ml  ?? 0,
+    prix50ml:    produit?.prix50ml  ?? 0,
+    prix100ml:   produit?.prix100ml ?? 0,
+    stockMlInitial: produit?.stockKilo?.stockMlTotal ?? 0,
   })
 
   useEffect(() => {
@@ -102,23 +104,6 @@ export function ProduitForm({ produit, mode }: Props) {
   const removeImage = (i: number) =>
     set('images', form.images.filter((_: string, j: number) => j !== i))
 
-  const updateStock = (taille: string, field: string, value: any) => {
-    const existing = form.stocks.find((s: Stock) => s.taille === taille)
-    if (existing) {
-      set('stocks', form.stocks.map((s: Stock) =>
-        s.taille === taille ? { ...s, [field]: value } : s
-      ))
-    } else {
-      set('stocks', [...form.stocks, {
-        taille, quantite: 0, seuilAlerte: 5, [field]: value
-      }])
-    }
-  }
-
-  const getStock = (taille: string): Stock =>
-    form.stocks.find((s: Stock) => s.taille === taille) ||
-    { taille, quantite: 0, seuilAlerte: 5 }
-
   const handleSubmit = async () => {
     if (!form.nom || !form.prix || !form.categorieId) {
       setError('Nom, prix et catégorie sont obligatoires.')
@@ -138,8 +123,12 @@ export function ProduitForm({ produit, mode }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
-          prix:     Number(form.prix),
+          prix:      Number(form.prix),
           prixAchat: form.prixAchat ? Number(form.prixAchat) : undefined,
+          prix30ml:  form.prix30ml  ? Number(form.prix30ml)  : null,
+          prix50ml:  form.prix50ml  ? Number(form.prix50ml)  : null,
+          prix100ml: form.prix100ml ? Number(form.prix100ml) : null,
+          stockMlInitial: undefined,
         }),
       })
 
@@ -148,23 +137,20 @@ export function ProduitForm({ produit, mode }: Props) {
         throw new Error(d.error || 'Erreur serveur')
       }
 
-      // Mettre à jour les stocks si en édition
-      if (mode === 'edition' && produit?.id) {
-        for (const stock of form.stocks) {
-          if (stock.quantite > 0 || stock.seuilAlerte !== 5) {
-            await fetch('/api/stock/mouvement', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                produitId: produit.id,
-                taille:    stock.taille,
-                type:      'AJUSTEMENT',
-                quantite:  stock.quantite,
-                raison:    'Mise à jour manuelle depuis ERP',
-              }),
-            })
-          }
-        }
+      const created = await res.json()
+      const produitId = mode === 'creation' ? created.id : produit?.id
+
+      // Créer/mettre à jour le stock d'essence (StockKilo)
+      if (produitId && form.stockMlInitial > 0) {
+        await fetch('/api/stock/kilo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            produitId,
+            stockMl: form.stockMlInitial,
+            type: mode === 'creation' ? 'ENTREE' : 'AJUSTEMENT',
+          }),
+        })
       }
 
       setSaved(true)
@@ -394,81 +380,75 @@ export function ProduitForm({ produit, mode }: Props) {
         </div>
       </div>
 
-      {/* ── STOCK PAR TAILLE ── */}
+      {/* ── PRIX PAR FORMAT ── */}
       <div style={sectionStyle}>
-        <div style={sectionHeaderStyle}>Stock par format</div>
-        <div style={{ padding: '0' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#FAF7F2' }}>
-                {['Format','Stock (flacons)','Seuil alerte','Prix vente (DT)'].map(h => (
-                  <th key={h} style={{
-                    padding: '0.7rem 1rem', textAlign: 'left',
-                    fontSize: '0.6rem', letterSpacing: '0.12em',
-                    textTransform: 'uppercase', color: '#C4B090',
-                    fontWeight: 500, borderBottom: '1px solid #EDE5D4',
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {TAILLES.map(taille => {
-                const s = getStock(taille)
-                return (
-                  <tr key={taille} style={{ borderBottom: '1px solid #F0EBE0' }}>
-                    <td style={{ padding: '0.7rem 1rem' }}>
-                      <span style={{
-                        background: 'rgba(196,150,10,0.1)',
-                        color: '#C4960A', padding: '0.2rem 0.6rem',
-                        fontSize: '0.72rem', fontWeight: 600,
-                        borderRadius: '3px',
-                      }}>{taille}</span>
-                    </td>
-                    <td style={{ padding: '0.5rem 1rem' }}>
-                      <input
-                        type="number" min="0"
-                        value={s.quantite}
-                        onChange={e => updateStock(taille, 'quantite', parseInt(e.target.value) || 0)}
-                        style={{
-                          width: '80px', padding: '0.4rem 0.6rem',
-                          border: '1px solid #EDE5D4', borderRadius: '3px',
-                          fontFamily: 'Jost,sans-serif', fontSize: '0.85rem',
-                          outline: 'none', color: '#1A1208',
-                        }}
-                      />
-                    </td>
-                    <td style={{ padding: '0.5rem 1rem' }}>
-                      <input
-                        type="number" min="0"
-                        value={s.seuilAlerte}
-                        onChange={e => updateStock(taille, 'seuilAlerte', parseInt(e.target.value) || 5)}
-                        style={{
-                          width: '80px', padding: '0.4rem 0.6rem',
-                          border: '1px solid #EDE5D4', borderRadius: '3px',
-                          fontFamily: 'Jost,sans-serif', fontSize: '0.85rem',
-                          outline: 'none', color: '#1A1208',
-                        }}
-                      />
-                    </td>
-                    <td style={{ padding: '0.5rem 1rem' }}>
-                      <input
-                        type="number" min="0" step="0.5"
-                        value={s.prixVente || ''}
-                        onChange={e => updateStock(taille, 'prixVente', parseFloat(e.target.value) || 0)}
-                        placeholder="—"
-                        style={{
-                          width: '90px', padding: '0.4rem 0.6rem',
-                          border: '1px solid #EDE5D4', borderRadius: '3px',
-                          fontFamily: 'Jost,sans-serif', fontSize: '0.85rem',
-                          outline: 'none', color: '#1A1208',
-                        }}
-                      />
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+        <div style={sectionHeaderStyle}>Prix par format</div>
+        <div style={sectionBodyStyle}>
+          <p style={{ fontSize: '0.75rem', color: '#8A7B68', marginBottom: '1rem', marginTop: 0 }}>
+            Prix de vente affiché sur la boutique pour chaque format.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+            {[
+              { label: 'Prix 30 ml (DT)', key: 'prix30ml' },
+              { label: 'Prix 50 ml (DT)', key: 'prix50ml' },
+              { label: 'Prix 100 ml (DT)', key: 'prix100ml' },
+            ].map(({ label, key }) => (
+              <div key={key}>
+                <label style={labelStyle}>{label}</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={(form as any)[key] || ''}
+                  onChange={e => set(key, parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  style={inputStyle}
+                  onFocus={e => (e.target as HTMLInputElement).style.borderColor = '#C4960A'}
+                  onBlur={e => (e.target as HTMLInputElement).style.borderColor = '#EDE5D4'}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── STOCK D'ESSENCE ── */}
+      <div style={sectionStyle}>
+        <div style={sectionHeaderStyle}>Stock d'essence</div>
+        <div style={sectionBodyStyle}>
+          <p style={{ fontSize: '0.75rem', color: '#8A7B68', marginBottom: '1rem', marginTop: 0 }}>
+            Quantité de parfum pur disponible en stock. Chaque vente déduit automatiquement la consommation
+            (30ml → 11ml · 50ml → 18ml · 100ml → 33ml).
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Stock en ml</label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={form.stockMlInitial}
+                onChange={e => set('stockMlInitial', parseFloat(e.target.value) || 0)}
+                placeholder="ex: 1000"
+                style={inputStyle}
+                onFocus={e => (e.target as HTMLInputElement).style.borderColor = '#C4960A'}
+                onBlur={e => (e.target as HTMLInputElement).style.borderColor = '#EDE5D4'}
+              />
+            </div>
+            {form.stockMlInitial > 0 && (
+              <div style={{
+                padding: '0.75rem 1rem',
+                background: 'rgba(196,150,10,0.08)',
+                border: '1px solid rgba(196,150,10,0.2)',
+                borderRadius: '4px',
+                fontSize: '0.78rem',
+                color: '#C4960A',
+                whiteSpace: 'nowrap',
+              }}>
+                ≈ {(form.stockMlInitial / 1000).toFixed(3)} kg
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

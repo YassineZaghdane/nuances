@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react'
-import { ErpPage } from '@/components/erp/ErpPage'
+import { ErpPage, ErpPagination } from '@/components/erp/ErpPage'
 import { patchProduit, urlListeProduitsErp, VITRINE_FETCH_INIT } from '@/lib/catalog-api'
 
 interface Produit {
@@ -17,6 +17,8 @@ export default function ExclusivitesPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<BadgeType | 'tous'>('tous')
+  const [page, setPage] = useState(1)
+  const PER = 24
 
   useEffect(() => {
     fetch('/api/produits?limit=100', { cache: 'no-store' })
@@ -84,6 +86,7 @@ export default function ExclusivitesPage() {
       filter === 'featured' ? p.featured : true
     return matchSearch && matchFilter
   })
+  const paginated = filtered.slice((page - 1) * PER, page * PER)
 
   const BADGES: { key: BadgeType; label: string; color: string; bg: string }[] = [
     { key:'exclusif',  label:'Exclusif',   color:'#C4960A', bg:'#FFF8E6' },
@@ -107,7 +110,7 @@ export default function ExclusivitesPage() {
         <input
           placeholder="Rechercher…"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
           style={{
             padding:'0.38rem 0.9rem', fontSize:'0.78rem',
             border:'1px solid #EDE5D4', background:'#FDFAF5',
@@ -140,7 +143,7 @@ export default function ExclusivitesPage() {
       )}
       <div style={{ display:'flex', gap:'0.4rem', marginBottom:'1.5rem', flexWrap:'wrap' }}>
         {[{ key:'tous', label:'Tous' }, ...BADGES.map(b => ({ key:b.key, label:b.label }))].map(f => (
-          <button key={f.key} onClick={() => setFilter(f.key as BadgeType | 'tous')} style={{
+          <button key={f.key} onClick={() => { setFilter(f.key as BadgeType | 'tous'); setPage(1); }} style={{
             padding:'0.38rem 0.85rem', fontSize:'0.7rem',
             background: filter === f.key ? '#1A1208' : '#FDFAF5',
             color: filter === f.key ? 'white' : '#8A7B68',
@@ -151,8 +154,8 @@ export default function ExclusivitesPage() {
         ))}
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:'1rem' }}>
-        {filtered.map(p => (
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:'1rem', marginBottom:'1rem' }}>
+        {paginated.map(p => (
           <div key={p.id} style={{
             background:'#FDFAF5', border:'1px solid #EDE5D4',
             borderRadius:'6px', overflow:'hidden',
@@ -236,6 +239,7 @@ export default function ExclusivitesPage() {
           </div>
         ))}
       </div>
+      <ErpPagination page={page} total={filtered.length} perPage={PER} onPage={setPage} />
     </ErpPage>
   )
 }

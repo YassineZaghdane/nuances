@@ -58,6 +58,9 @@ export async function GET(_req: Request, { params }: Params) {
         ...produit,
         prix: Number(produit.prix),
         prixAchat: produit.prixAchat ? Number(produit.prixAchat) : null,
+        prix30ml: produit.prix30ml != null ? Number(produit.prix30ml) : null,
+        prix50ml: produit.prix50ml != null ? Number(produit.prix50ml) : null,
+        prix100ml: produit.prix100ml != null ? Number(produit.prix100ml) : null,
       },
       { headers: noStore }
     );
@@ -86,20 +89,9 @@ export async function PATCH(req: Request, { params }: Params) {
 
     const body = await req.json();
     const {
-      nom,
-      slug,
-      description,
-      notes,
-      prix,
-      prixAchat,
-      images,
-      categorieId,
-      actif,
-      featured,
-      exclusif,
-      nouveaute,
-      offre,
-      offreLabel,
+      nom, slug, description, notes, prix, prixAchat,
+      prix30ml, prix50ml, prix100ml,
+      images, categorieId, actif, featured, exclusif, nouveaute, offre, offreLabel,
     } = body;
 
     const data: Prisma.ProduitUpdateInput = {};
@@ -109,6 +101,9 @@ export async function PATCH(req: Request, { params }: Params) {
     if (notes !== undefined) data.notes = notes;
     if (prix !== undefined) data.prix = prix;
     if (prixAchat !== undefined) data.prixAchat = prixAchat;
+    if (prix30ml !== undefined) data.prix30ml = prix30ml;
+    if (prix50ml !== undefined) data.prix50ml = prix50ml;
+    if (prix100ml !== undefined) data.prix100ml = prix100ml;
     if (images !== undefined) data.images = images;
     if (actif !== undefined) data.actif = actif;
     if (featured !== undefined) data.featured = featured;
@@ -123,13 +118,16 @@ export async function PATCH(req: Request, { params }: Params) {
     const updated = await prisma.produit.update({
       where: { id: produit.id },
       data,
-      include: { categorie: true, stocks: true },
+      include: { categorie: true, stockKilo: true },
     });
 
     return NextResponse.json({
       ...updated,
       prix: Number(updated.prix),
       prixAchat: updated.prixAchat ? Number(updated.prixAchat) : null,
+      prix30ml: updated.prix30ml != null ? Number(updated.prix30ml) : null,
+      prix50ml: updated.prix50ml != null ? Number(updated.prix50ml) : null,
+      prix100ml: updated.prix100ml != null ? Number(updated.prix100ml) : null,
     });
   } catch (error: unknown) {
     const err = error as Error;

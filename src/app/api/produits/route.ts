@@ -22,6 +22,9 @@ const produitPostSchema = z.object({
   slug:        z.string().min(2).max(100).regex(/^[a-z0-9-]+$/).optional(),
   prix:        z.number().positive().max(99999),
   prixAchat:   z.number().nonnegative().max(99999).optional().nullable(),
+  prix30ml:    z.number().nonnegative().max(99999).optional().nullable(),
+  prix50ml:    z.number().nonnegative().max(99999).optional().nullable(),
+  prix100ml:   z.number().nonnegative().max(99999).optional().nullable(),
   categorieId: z.string().min(1).max(100),
   description: z.string().max(1000).optional().nullable(),
   notes:       z.string().max(500).optional().nullable(),
@@ -77,6 +80,9 @@ export async function GET(req: Request) {
         description: true,
         notes: true,
         prix: true,
+        prix30ml: true,
+        prix50ml: true,
+        prix100ml: true,
         images: true,
         actif: true,
         featured: true,
@@ -85,19 +91,7 @@ export async function GET(req: Request) {
         offre: true,
         offreLabel: true,
         categorie: { select: { id: true, nom: true, slug: true } },
-        stocks: {
-          select: {
-            taille: true,
-            quantite: true,
-            volumeMl: true,
-            seuilAlerte: true,
-          },
-        },
-        ...(include.includes("stockKilo")
-          ? {
-              stockKilo: { select: { stockKgTotal: true, stockMlTotal: true } },
-            }
-          : {}),
+        stockKilo: { select: { stockMlTotal: true, stockKgTotal: true } },
       },
       orderBy: [
         { featured: "desc" },
@@ -111,6 +105,9 @@ export async function GET(req: Request) {
     const serialized = produits.map((p) => ({
       ...p,
       prix: Number(p.prix),
+      prix30ml: p.prix30ml != null ? Number(p.prix30ml) : null,
+      prix50ml: p.prix50ml != null ? Number(p.prix50ml) : null,
+      prix100ml: p.prix100ml != null ? Number(p.prix100ml) : null,
     }));
 
     return NextResponse.json(serialized, { headers: NO_STORE });
@@ -149,6 +146,9 @@ export async function POST(req: Request) {
       notes,
       prix,
       prixAchat,
+      prix30ml,
+      prix50ml,
+      prix100ml,
       images,
       categorieId,
       actif,
@@ -169,6 +169,9 @@ export async function POST(req: Request) {
         notes: notes || null,
         prix,
         prixAchat: prixAchat ?? null,
+        prix30ml: prix30ml ?? null,
+        prix50ml: prix50ml ?? null,
+        prix100ml: prix100ml ?? null,
         images: images || [],
         categorieId,
         actif: actif ?? true,

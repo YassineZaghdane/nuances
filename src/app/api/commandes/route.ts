@@ -12,7 +12,7 @@ import { genererNumeroCommande } from "@/lib/order-numbers";
 import { envoyerConfirmationCommande } from "@/lib/email";
 import { Prisma } from "@prisma/client";
 import { rateLimit } from "@/lib/rateLimit";
-import { TAILLE_ML } from "@/types";
+import { TAILLE_ML, CONSOMMATION_PARFUM } from "@/types";
 import { z } from "zod";
 
 const commandeSchema = z.object({
@@ -244,6 +244,9 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      let totalAlcoolMl = 0;
+      const alcoolMouvements: { quantiteMl: number; raison: string }[] = [];
+
       for (const ligne of lignes) {
         const volumeMl = TAILLE_ML[ligne.taille] ?? 0;
         const volumeMlTotal = volumeMl * ligne.quantite;
@@ -252,6 +255,8 @@ export async function POST(request: NextRequest) {
             produitId_taille: { produitId: ligne.produitId, taille: ligne.taille },
           },
         });
+
+        // Déduire le stock flacons (parfum fini)
         if (stock) {
           await tx.stock.update({
             where: { id: stock.id },
@@ -268,6 +273,58 @@ export async function POST(request: NextRequest) {
               commandeId: commande.id,
             },
           });
+        }
+
+        // Déduire les matières premières (parfum pur + alcool) selon la formule
+        const conso = CONSOMMATION_PARFUM[ligne.taille];
+        if (conso) {
+          const mlParfum = conso.parfum * ligne.quantite;
+          const mlAlcool = conso.alcool * ligne.quantite;
+
+          // Déduire le parfum pur (StockKilo du produit)
+          const stockKilo = await tx.stockKilo.findUnique({
+            where: { produitId: ligne.produitId },
+          });
+          if (stockKilo) {
+            await tx.stockKilo.update({
+              where: { produitId: ligne.produitId },
+              data: {
+                stockMlTotal: Math.max(0, stockKilo.stockMlTotal - mlParfum),
+                stockKgTotal: Math.max(0, stockKilo.stockKgTotal - mlParfum / 1000),
+              },
+            });
+          }
+
+          // Accumuler la déduction d'alcool
+          totalAlcoolMl += mlAlcool;
+          alcoolMouvements.push({
+            quantiteMl: mlAlcool,
+            raison: `Commande ${numero} — ${ligne.quantite}× ${ligne.taille}`,
+          });
+        }
+      }
+
+      // Déduire l'alcool en une seule passe (matière première partagée)
+      if (totalAlcoolMl > 0) {
+        const alcool = await tx.matierePremiere.findFirst({
+          where: { nom: { contains: "lcool", mode: "insensitive" } },
+        });
+        if (alcool) {
+          await tx.matierePremiere.update({
+            where: { id: alcool.id },
+            data: { stockMl: Math.max(0, alcool.stockMl - totalAlcoolMl) },
+          });
+          for (const mvt of alcoolMouvements) {
+            await tx.mouvementMatiere.create({
+              data: {
+                matiereId: alcool.id,
+                type: "SORTIE",
+                quantiteMl: mvt.quantiteMl,
+                raison: mvt.raison,
+                commandeId: commande.id,
+              },
+            });
+          }
         }
       }
 
@@ -296,6 +353,7 @@ export async function POST(request: NextRequest) {
         clientEmail: commandeComplete.client.email,
         clientNom: commandeComplete.client.nom,
         numero: commandeComplete.numero,
+        commandeId: result.commandeId,
         lignes: commandeComplete.lignes.map((l) => ({
           nom: l.produit?.nom || "Produit",
           taille: l.taille,
@@ -310,7 +368,7 @@ export async function POST(request: NextRequest) {
       }).catch((err) => console.error("[Email] Erreur async:", err));
     }
 
-    return Response.json({ numero: result.numero });
+    return Response.json({ numero: result.numero, commandeId: result.commandeId });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erreur serveur";
     return Response.json({ error: message }, { status: 400 });

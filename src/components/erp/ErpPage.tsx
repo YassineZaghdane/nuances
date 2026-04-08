@@ -130,6 +130,48 @@ export function StatutBadge({ statut }: { statut: string }) {
   )
 }
 
+const paginBtnStyle = (active: boolean): React.CSSProperties => ({
+  padding: '0.3rem 0.7rem',
+  fontSize: '0.7rem',
+  border: '1px solid #EDE5D4',
+  background: '#FDFAF5',
+  color: active ? '#1A1208' : '#C4B090',
+  cursor: active ? 'pointer' : 'not-allowed',
+  fontFamily: 'Jost,sans-serif',
+  borderRadius: '3px',
+})
+
+export function ErpPagination({
+  page,
+  total,
+  perPage,
+  onPage,
+}: {
+  page: number
+  total: number
+  perPage: number
+  onPage: (p: number) => void
+}) {
+  const pages = Math.ceil(total / perPage) || 1
+  if (pages <= 1 && total <= perPage) return null
+  const hasPrev = page > 1
+  const hasNext = page < pages
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <span style={{ fontSize: '0.72rem', color: '#C4B090' }}>
+        {total === 0
+          ? 'Aucun résultat'
+          : `${Math.min((page - 1) * perPage + 1, total)}–${Math.min(page * perPage, total)} sur ${total}`}
+      </span>
+      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+        <button type="button" onClick={() => hasPrev && onPage(page - 1)} disabled={!hasPrev} style={paginBtnStyle(hasPrev)}>←</button>
+        <span style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', color: '#8A7B68' }}>{page} / {pages}</span>
+        <button type="button" onClick={() => hasNext && onPage(page + 1)} disabled={!hasNext} style={paginBtnStyle(hasNext)}>→</button>
+      </div>
+    </div>
+  )
+}
+
 export function BtnPrimary({
   children,
   onClick,

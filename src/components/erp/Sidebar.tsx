@@ -45,7 +45,10 @@ const MENU_COMPLET: MenuSection[] = [
 const MENU_VENDEUR: MenuSection[] = [
   {
     section: 'Vente',
-    items: [{ href: '/erp/vente-place', label: 'Vente sur place', icon: '▪' }],
+    items: [
+      { href: '/erp/commandes',   label: 'Commandes',       icon: '▪', alert: true },
+      { href: '/erp/vente-place', label: 'Vente sur place', icon: '▪' },
+    ],
   },
 ];
 

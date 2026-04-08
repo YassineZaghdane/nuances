@@ -76,7 +76,11 @@ export default function CommandePage() {
       }
       const data = await res.json();
       clearCart();
-      router.push(`/commande/confirmation?numero=${data.numero || ""}`);
+      if (data.commandeId) {
+        router.push(`/commande/confirmation/${data.commandeId}`);
+      } else {
+        router.push(`/commande/confirmation?numero=${data.numero || ""}`);
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : "Une erreur est survenue. Veuillez réessayer.";
       alert(message);

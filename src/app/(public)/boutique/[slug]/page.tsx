@@ -10,20 +10,17 @@ import { useCartStore } from '@/store/cart-store'
 import { urlProduitParSlug, VITRINE_FETCH_INIT } from '@/lib/catalog-api'
 import { useRefreshOnFocus } from '@/hooks/useRefreshOnFocus'
 
-interface StockItem { taille: string; quantite: number; prixVente?: number }
+interface FormatItem { taille: string; prix: number; dispo: boolean }
 interface Produit {
   id: string; nom: string; slug: string
   description?: string; notes?: string
-  prix: number; images: string[]
+  prix: number
+  prix30ml?: number | null; prix50ml?: number | null; prix100ml?: number | null
+  images: string[]
   featured: boolean; exclusif: boolean; nouveaute: boolean
   offre: boolean; offreLabel?: string
   categorie?: { nom: string }
-  stocks: StockItem[]
-}
-
-const TAILLE_PRIX: Record<string,number> = {
-  '5ml':0,'10ml':0,'15ml':0,
-  '30ml':0,'50ml':10,'100ml':20
+  stockKilo?: { stockMlTotal: number } | null
 }
 
 export default function FicheProduitPage() {
@@ -71,17 +68,21 @@ export default function FicheProduitPage() {
           r.ok &&
           d &&
           typeof d === 'object' &&
-          typeof d.id === 'string' &&
-          Array.isArray(d.stocks)
+          typeof d.id === 'string'
         if (!ok) {
           setProduit(null)
           return
         }
         setProduit(d as Produit)
-        const firstDispo = (d.stocks as StockItem[]).find(
-          (s) => s.quantite > 0
-        )
-        if (firstDispo) setTaille(firstDispo.taille)
+        // Select first available format
+        const ml = d.stockKilo?.stockMlTotal ?? 0
+        const formats = [
+          { taille: '30ml', prix: d.prix30ml, minMl: 11 },
+          { taille: '50ml', prix: d.prix50ml, minMl: 18 },
+          { taille: '100ml', prix: d.prix100ml, minMl: 33 },
+        ]
+        const first = formats.find(f => f.prix != null && ml >= f.minMl)
+        if (first) setTaille(first.taille)
       })
       .catch(() => {
         if (!cancelled) setProduit(null)
@@ -158,15 +159,20 @@ export default function FicheProduitPage() {
     </div>
   )
 
-  const stocks = Array.isArray(produit.stocks) ? produit.stocks : []
-  const stockTaille = stocks.find((s) => s.taille === taille)
-  const dispo = stockTaille?.quantite || 0
-  const prixBase = Number(produit.prix)
-  const prixFinal = prixBase + (TAILLE_PRIX[taille] || 0)
+  const ml = produit.stockKilo?.stockMlTotal ?? 0
+  const formats: FormatItem[] = [
+    { taille: '30ml',  prix: Number(produit.prix30ml),  dispo: produit.prix30ml  != null && ml >= 11 },
+    { taille: '50ml',  prix: Number(produit.prix50ml),  dispo: produit.prix50ml  != null && ml >= 18 },
+    { taille: '100ml', prix: Number(produit.prix100ml), dispo: produit.prix100ml != null && ml >= 33 },
+  ].filter(f => f.prix > 0)
+
+  const formatActuel = formats.find(f => f.taille === taille)
+  const dispo = formatActuel?.dispo ?? false
+  const prixFinal = formatActuel?.prix ?? 0
   const images = produit.images?.length > 0 ? produit.images : []
 
   const handleAdd = () => {
-    if (!taille || dispo === 0) return
+    if (!taille || !dispo) return
     addItem({
       id: `${produit.id}-${taille}`,
       produitId: produit.id,
@@ -265,14 +271,12 @@ export default function FicheProduitPage() {
             <div style={{ marginBottom:'1.5rem' }}>
               <div style={{ fontSize:'0.65rem', letterSpacing:'0.2em', textTransform:'uppercase', color:'#8A7B68', marginBottom:'0.8rem' }}>Choisir le format</div>
               <div style={{ display:'flex', gap:'0.6rem', flexWrap:'wrap' }}>
-                {stocks.map(s => {
-                  const p = prixBase + (TAILLE_PRIX[s.taille] || 0)
-                  const isSelected = taille === s.taille
-                  const isDispo = s.quantite > 0
+                {formats.map(f => {
+                  const isSelected = taille === f.taille
                   return (
-                    <button key={s.taille} onClick={() => isDispo && setTaille(s.taille)} disabled={!isDispo} style={{ padding:'0.7rem 1.2rem', border: isSelected ? '2px solid #1A1208' : '1px solid rgba(26,18,8,0.18)', background: isSelected ? '#1A1208' : 'white', color: isSelected ? 'white' : isDispo ? '#1A1208' : '#C4B090', cursor: isDispo ? 'pointer' : 'not-allowed', opacity: isDispo ? 1 : 0.45, transition:'all 0.2s', display:'flex', flexDirection:'column', alignItems:'center', gap:'0.15rem' }}>
-                      <span style={{ fontFamily:'Jost,sans-serif', fontSize:'0.82rem', fontWeight: isSelected ? 600 : 400 }}>{s.taille}</span>
-                      <span style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'0.88rem', color: isSelected ? 'rgba(255,255,255,0.8)' : '#C4960A' }}>{p.toFixed(0)} DT</span>
+                    <button key={f.taille} onClick={() => f.dispo && setTaille(f.taille)} disabled={!f.dispo} style={{ padding:'0.7rem 1.2rem', border: isSelected ? '2px solid #1A1208' : '1px solid rgba(26,18,8,0.18)', background: isSelected ? '#1A1208' : 'white', color: isSelected ? 'white' : f.dispo ? '#1A1208' : '#C4B090', cursor: f.dispo ? 'pointer' : 'not-allowed', opacity: f.dispo ? 1 : 0.45, transition:'all 0.2s', display:'flex', flexDirection:'column', alignItems:'center', gap:'0.15rem' }}>
+                      <span style={{ fontFamily:'Jost,sans-serif', fontSize:'0.82rem', fontWeight: isSelected ? 600 : 400 }}>{f.taille}</span>
+                      <span style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'0.88rem', color: isSelected ? 'rgba(255,255,255,0.8)' : '#C4960A' }}>{f.prix.toFixed(0)} DT</span>
                     </button>
                   )
                 })}
@@ -283,12 +287,12 @@ export default function FicheProduitPage() {
               <div style={{ display:'flex', alignItems:'center', gap:'0' }}>
                 <button onClick={() => setQte(curr => Math.max(1, curr - 1))} style={{ width:'44px', height:'44px', border:'1px solid rgba(26,18,8,0.18)', background:'white', cursor:'pointer' }}>−</button>
                 <div style={{ width:'60px', height:'44px', border:'1px solid rgba(26,18,8,0.18)', borderLeft:'none', borderRight:'none', display:'flex', alignItems:'center', justifyContent:'center' }}>{qte}</div>
-                <button onClick={() => setQte(curr => Math.min(dispo, curr + 1))} style={{ width:'44px', height:'44px', border:'1px solid rgba(26,18,8,0.18)', background:'white', cursor:'pointer' }}>+</button>
+                <button onClick={() => setQte(curr => curr + 1)} style={{ width:'44px', height:'44px', border:'1px solid rgba(26,18,8,0.18)', background:'white', cursor:'pointer' }}>+</button>
               </div>
             </div>
             <div style={{ display:'flex', gap:'0.8rem', marginBottom:'2rem', flexWrap:'wrap' }}>
-              <button onClick={handleAdd} disabled={!taille || dispo === 0} style={{ flex:1, padding:'1.1rem 2rem', background: added ? '#2E7D52' : (!taille || dispo === 0) ? '#C4B090' : 'linear-gradient(135deg,#C4960A,#A07808)', color:'white', border:'none', cursor: (!taille || dispo === 0) ? 'not-allowed' : 'pointer', minWidth:'200px' }}>
-                {added ? '✓ Ajouté au panier' : dispo === 0 ? 'Rupture de stock' : `Ajouter au panier — ${(prixFinal * qte).toFixed(0)} DT`}
+              <button onClick={handleAdd} disabled={!taille || !dispo} style={{ flex:1, padding:'1.1rem 2rem', background: added ? '#2E7D52' : (!taille || !dispo) ? '#C4B090' : 'linear-gradient(135deg,#C4960A,#A07808)', color:'white', border:'none', cursor: (!taille || !dispo) ? 'not-allowed' : 'pointer', minWidth:'200px' }}>
+                {added ? '✓ Ajouté au panier' : !dispo ? 'Rupture de stock' : `Ajouter au panier — ${(prixFinal * qte).toFixed(0)} DT`}
               </button>
               <a
                 href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP || '21612345678'}?text=${encodeURIComponent(`Bonjour, je suis intéressé(e) par ${produit.nom} (${taille}) — ${prixFinal} DT`)}`}

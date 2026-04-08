@@ -133,6 +133,13 @@ export const STATUT_COMMANDE_STYLES: Record<StatutCommande, StatutStyle> = {
   RETOURNEE:      { color:'#6B4C8B', bg:'#F0EBF9', label:'Retournée' },
 }
 
+// ml de parfum pur + ml d'alcool consommés par flacon vendu
+export const CONSOMMATION_PARFUM: Record<string, { parfum: number; alcool: number }> = {
+  '30ml':  { parfum: 11, alcool: 19 },
+  '50ml':  { parfum: 18, alcool: 32 },
+  '100ml': { parfum: 33, alcool: 67 },
+}
+
 export const TAILLE_ML: Record<string, number> = {
   '1ml': 1,
   '2ml': 2,

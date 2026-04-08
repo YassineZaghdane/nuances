@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react'
-import { ErpPage, StatutBadge } from '@/components/erp/ErpPage'
+import { ErpPage, ErpPagination, StatutBadge } from '@/components/erp/ErpPage'
 import Link from 'next/link'
 
 interface Livraison {
@@ -34,6 +34,8 @@ export default function LivraisonsPage() {
   const [statut, setStatut]         = useState('Tous')
   const [search, setSearch]         = useState('')
   const [saving, setSaving]         = useState<string | null>(null)
+  const [page, setPage]             = useState(1)
+  const PER = 20
 
   useEffect(() => {
     fetch('/api/livraisons')
@@ -53,6 +55,7 @@ export default function LivraisonsPage() {
       l.ville?.toLowerCase().includes(search.toLowerCase())
     return matchStatut && matchSearch
   })
+  const paginated = filtered.slice((page - 1) * PER, page * PER)
 
   const updateStatut = async (id: string, newStatut: string) => {
     setSaving(id)
@@ -86,7 +89,7 @@ export default function LivraisonsPage() {
         <input
           placeholder="Rechercher client, commande, ville…"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); setPage(1); }}
           style={{
             padding: '0.38rem 0.9rem', fontSize: '0.78rem',
             border: '1px solid #EDE5D4', background: '#FDFAF5',
@@ -121,7 +124,7 @@ export default function LivraisonsPage() {
       {/* Filtres */}
       <div style={{ display: 'flex', gap: '0.3rem', marginBottom: '1.2rem' }}>
         {['Tous', 'EN_ATTENTE', 'EN_COURS', 'LIVREE', 'ECHEC'].map(s => (
-          <button key={s} onClick={() => setStatut(s)} style={{
+          <button key={s} onClick={() => { setStatut(s); setPage(1); }} style={{
             padding: '0.38rem 0.85rem', fontSize: '0.7rem',
             background: statut === s ? '#1A1208' : '#FDFAF5',
             color: statut === s ? 'white' : '#8A7B68',
@@ -145,6 +148,7 @@ export default function LivraisonsPage() {
             Aucune livraison trouvée
           </div>
         ) : (
+          <>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#FAF7F2' }}>
@@ -159,7 +163,7 @@ export default function LivraisonsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(l => (
+              {paginated.map(l => (
                 <tr key={l.id}
                   style={{ borderBottom: '1px solid #F0EBE0', transition: 'background 0.15s' }}
                   onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#FAF7F2'}
@@ -259,6 +263,10 @@ export default function LivraisonsPage() {
               ))}
             </tbody>
           </table>
+          <div style={{ padding: '0.9rem 1.5rem', borderTop: '1px solid #EDE5D4' }}>
+            <ErpPagination page={page} total={filtered.length} perPage={PER} onPage={setPage} />
+          </div>
+          </>
         )}
       </div>
     </ErpPage>

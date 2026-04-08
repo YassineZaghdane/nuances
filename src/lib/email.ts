@@ -17,6 +17,7 @@ export async function envoyerConfirmationCommande(data: {
   clientEmail: string
   clientNom: string
   numero: string
+  commandeId?: string
   lignes: Array<{
     nom: string
     taille: string
@@ -135,13 +136,16 @@ export async function envoyerConfirmationCommande(data: {
     </p>
 
     <div style="text-align:center;margin-bottom:24px">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}?suivi=${data.numero}"
+      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/commande/confirmation/${data.commandeId || data.numero}"
          style="display:inline-block;background:#1A1208;color:white;border:1px solid #1A1208;
                 padding:14px 32px;font-size:12px;letter-spacing:3px;
                 text-transform:uppercase;text-decoration:none;box-shadow:0 8px 22px rgba(26,18,8,0.2)">
         Suivre ma commande
       </a>
     </div>
+    <p style="text-align:center;font-size:11px;color:#C4B090;margin-bottom:12px">
+      Ou copiez ce lien : ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/commande/confirmation/${data.commandeId || data.numero}
+    </p>
 
     <div style="background:#FAF7F2;border:1px solid #EDE5D4;padding:14px 16px;margin-bottom:8px">
       <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#8A7B68;margin-bottom:6px">

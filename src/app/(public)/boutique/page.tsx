@@ -18,6 +18,9 @@ interface Produit {
   slug: string;
   notes?: string;
   prix: number;
+  prix30ml?: number | null;
+  prix50ml?: number | null;
+  prix100ml?: number | null;
   images: string[];
   featured: boolean;
   exclusif?: boolean;
@@ -25,7 +28,7 @@ interface Produit {
   offre?: boolean;
   offreLabel?: string | null;
   categorie: Categorie;
-  stocks: { taille: string; quantite: number }[];
+  stockKilo?: { stockMlTotal: number } | null;
 }
 
 function BoutiqueSkeleton() {
@@ -535,9 +538,11 @@ function BoutiquePageInner() {
                   nom={p.nom}
                   slug={p.slug}
                   notes={p.notes}
-                  prix={Number(p.prix)}
+                  prix30ml={p.prix30ml}
+                  prix50ml={p.prix50ml}
+                  prix100ml={p.prix100ml}
+                  stockMlTotal={p.stockKilo?.stockMlTotal}
                   images={p.images}
-                  stocks={p.stocks}
                   featured={p.featured}
                   exclusif={p.exclusif}
                   nouveaute={p.nouveaute}

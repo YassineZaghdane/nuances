@@ -9,10 +9,12 @@ type Product = {
   nom: string
   slug: string
   notes?: string | null
-  prix: number
+  prix30ml?: number | null
+  prix50ml?: number | null
+  prix100ml?: number | null
   images: string[]
-  stocks?: { taille: string; quantite: number }[]
   featured?: boolean
+  stockKilo?: { stockMlTotal: number } | null
 }
 
 export function BestsellersGrid() {
@@ -65,9 +67,11 @@ export function BestsellersGrid() {
             nom={product.nom}
             slug={product.slug}
             notes={product.notes ?? undefined}
-            prix={product.prix}
+            prix30ml={product.prix30ml}
+            prix50ml={product.prix50ml}
+            prix100ml={product.prix100ml}
+            stockMlTotal={product.stockKilo?.stockMlTotal}
             images={product.images}
-            stocks={product.stocks}
             featured={product.featured}
           />
         ))}

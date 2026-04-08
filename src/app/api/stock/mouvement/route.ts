@@ -17,12 +17,14 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { produitId, taille, type, quantite, raison } = body as {
+    const { produitId, taille, type, quantite, raison, seuilAlerte, prixVente } = body as {
       produitId: string;
       taille: string;
       type: "ENTREE" | "SORTIE" | "AJUSTEMENT";
       quantite: number;
       raison?: string;
+      seuilAlerte?: number;
+      prixVente?: number;
     };
 
     if (!produitId || !taille || !type || quantite == null) {
@@ -52,13 +54,18 @@ export async function POST(req: Request) {
       where: {
         produitId_taille: { produitId, taille },
       },
-      update: { quantite: nouvelleQte },
+      update: {
+        quantite: nouvelleQte,
+        ...(seuilAlerte != null ? { seuilAlerte } : {}),
+        ...(prixVente != null ? { prixVente } : {}),
+      },
       create: {
         produitId,
         taille,
         volumeMl: ml,
         quantite: nouvelleQte,
-        seuilAlerte: 5,
+        seuilAlerte: seuilAlerte ?? 5,
+        ...(prixVente != null ? { prixVente } : {}),
       },
     });
 

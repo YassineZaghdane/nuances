@@ -3,19 +3,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCartStore } from "@/store/cart-store";
 
-interface Stock {
-  taille: string;
-  quantite: number;
-}
-
 interface ProductCardProps {
   id: string;
   nom: string;
   slug: string;
   notes?: string;
-  prix: number;
+  prix30ml?: number | null;
+  prix50ml?: number | null;
+  prix100ml?: number | null;
+  stockMlTotal?: number | null;
   images?: string[];
-  stocks?: Stock[];
   featured?: boolean;
   exclusif?: boolean;
   nouveaute?: boolean;
@@ -23,11 +20,11 @@ interface ProductCardProps {
   offreLabel?: string;
 }
 
-const TAILLE_PRIX: Record<string, number> = {
-  "30ml": 0,
-  "50ml": 10,
-  "100ml": 20,
-};
+const FORMATS: { taille: string; key: keyof ProductCardProps; minMl: number }[] = [
+  { taille: '30ml',  key: 'prix30ml',  minMl: 11 },
+  { taille: '50ml',  key: 'prix50ml',  minMl: 18 },
+  { taille: '100ml', key: 'prix100ml', minMl: 33 },
+];
 
 // Cache simple pour éviter de re-télécharger la résolution Imgur
 // pour chaque carte (utile quand plusieurs cartes utilisent le même album).
@@ -50,9 +47,11 @@ export function ProductCard({
   nom,
   slug,
   notes,
-  prix,
+  prix30ml,
+  prix50ml,
+  prix100ml,
+  stockMlTotal,
   images,
-  stocks,
   featured,
   exclusif,
   nouveaute,
@@ -60,14 +59,20 @@ export function ProductCard({
   offreLabel,
 }: ProductCardProps) {
   const { addItem } = useCartStore();
-  const [selectedTaille, setSelectedTaille] = useState(
-    stocks?.[0]?.taille || "30ml"
-  );
   const [hovered, setHovered] = useState(false);
   const [adding, setAdding] = useState(false);
 
-  const taillesDispos = stocks?.filter((s) => s.quantite > 0) || [];
-  const prixFinal = Number(prix) + (TAILLE_PRIX[selectedTaille] || 0);
+  const ml = stockMlTotal ?? 0;
+  const taillesDispos = FORMATS
+    .filter(f => (f.key === 'prix30ml' ? prix30ml : f.key === 'prix50ml' ? prix50ml : prix100ml) != null && ml >= f.minMl)
+    .map(f => ({
+      taille: f.taille,
+      prix: Number(f.key === 'prix30ml' ? prix30ml : f.key === 'prix50ml' ? prix50ml : prix100ml),
+    }));
+
+  const [selectedTaille, setSelectedTaille] = useState(taillesDispos[0]?.taille || '30ml');
+  const prixFinal = taillesDispos.find(t => t.taille === selectedTaille)?.prix
+    ?? taillesDispos[0]?.prix ?? 0;
   const rawImg = images?.[0];
   const [resolvedImg, setResolvedImg] = useState<string | undefined>(
     rawImg
@@ -114,6 +119,7 @@ export function ProductCard({
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!prixFinal || taillesDispos.length === 0) return;
     setAdding(true);
     addItem({
       id: `${id}-${selectedTaille}`,
@@ -431,35 +437,37 @@ export function ProductCard({
               minHeight: "2rem",
             }}
           >
-            {taillesDispos.length > 0 &&
-              taillesDispos.map((s) => (
-                <button
-                  key={s.taille}
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setSelectedTaille(s.taille);
-                  }}
-                  style={{
-                    padding: "0.3rem 0.7rem",
-                    fontSize: "0.65rem",
-                    fontFamily: "Jost, sans-serif",
-                    letterSpacing: "0.08em",
-                    border:
-                      selectedTaille === s.taille
-                        ? "1px solid #1A1208"
-                        : "1px solid rgba(26,18,8,0.15)",
-                    background:
-                      selectedTaille === s.taille ? "#1A1208" : "transparent",
-                    color: selectedTaille === s.taille ? "white" : "#8A7B68",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {s.taille}
-                </button>
-              ))}
+            {taillesDispos.map((t) => (
+              <button
+                key={t.taille}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSelectedTaille(t.taille);
+                }}
+                style={{
+                  padding: "0.3rem 0.7rem",
+                  fontSize: "0.65rem",
+                  fontFamily: "Jost, sans-serif",
+                  letterSpacing: "0.08em",
+                  border: selectedTaille === t.taille
+                    ? "1px solid #1A1208"
+                    : "1px solid rgba(26,18,8,0.15)",
+                  background: selectedTaille === t.taille ? "#1A1208" : "transparent",
+                  color: selectedTaille === t.taille ? "white" : "#8A7B68",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                {t.taille}
+              </button>
+            ))}
+            {taillesDispos.length === 0 && (
+              <span style={{ fontSize: "0.65rem", color: "#C4B090", lineHeight: "2rem" }}>
+                Rupture de stock
+              </span>
+            )}
           </div>
 
           <div
@@ -486,8 +494,9 @@ export function ProductCard({
             <button
               type="button"
               onClick={handleAdd}
+              disabled={taillesDispos.length === 0}
               style={{
-                background: adding ? "#5A8A5A" : "#1A1208",
+                background: adding ? "#5A8A5A" : taillesDispos.length === 0 ? "#C4B090" : "#1A1208",
                 color: "white",
                 border: "none",
                 padding: "0.6rem 1.2rem",
@@ -495,14 +504,14 @@ export function ProductCard({
                 fontFamily: "Jost, sans-serif",
                 letterSpacing: "0.12em",
                 textTransform: "uppercase",
-                cursor: "pointer",
+                cursor: taillesDispos.length === 0 ? "not-allowed" : "pointer",
                 transition: "all 0.3s",
                 display: "flex",
                 alignItems: "center",
                 gap: "0.4rem",
               }}
             >
-              {adding ? "✓ Ajouté" : "+ Panier"}
+              {adding ? "✓ Ajouté" : taillesDispos.length === 0 ? "Indisponible" : "+ Panier"}
             </button>
           </div>
         </div>

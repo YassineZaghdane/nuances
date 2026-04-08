@@ -52,6 +52,9 @@ export default function VolumetriePage() {
   const [viewTab, setViewTab] = useState<"stock" | "ventes" | "categories">(
     "stock"
   );
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PER = 20;
 
   useEffect(() => {
     setLoading(true);
@@ -98,7 +101,19 @@ export default function VolumetriePage() {
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: "0.4rem" }}>
+        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+          <input
+            placeholder="Rechercher…"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            style={{
+              padding: '0.38rem 0.9rem', fontSize: '0.78rem',
+              border: '1px solid rgba(26,18,8,0.15)', background: 'white',
+              color: '#1A1208', outline: 'none', width: '180px',
+              fontFamily: 'Jost,sans-serif', borderRadius: '3px',
+              marginRight: '0.4rem',
+            }}
+          />
           {[
             { val: "semaine", label: "7 jours" },
             { val: "mois", label: "Ce mois" },
@@ -108,7 +123,7 @@ export default function VolumetriePage() {
             <button
               key={p.val}
               type="button"
-              onClick={() => setPeriode(p.val)}
+              onClick={() => { setPeriode(p.val); setPage(1); }}
               style={{
                 padding: "0.4rem 0.9rem",
                 fontSize: "0.68rem",
@@ -240,7 +255,7 @@ export default function VolumetriePage() {
             <button
               key={tab.key}
               type="button"
-              onClick={() => setViewTab(tab.key)}
+              onClick={() => { setViewTab(tab.key); setPage(1); }}
               style={{
                 padding: "0.8rem 1.5rem",
                 fontSize: "0.72rem",
@@ -320,7 +335,10 @@ export default function VolumetriePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data?.stockVolumetrique.map((item, i) => (
+                    {data?.stockVolumetrique
+                      .filter(item => item.produit.toLowerCase().includes(search.toLowerCase()))
+                      .slice((page - 1) * PER, page * PER)
+                      .map((item, i) => (
                       <tr
                         key={i}
                         style={{
@@ -444,6 +462,21 @@ export default function VolumetriePage() {
                     ))}
                   </tbody>
                 </table>
+                {(() => {
+                  const total = (data?.stockVolumetrique ?? []).filter(i => i.produit.toLowerCase().includes(search.toLowerCase())).length;
+                  const pages = Math.ceil(total / PER) || 1;
+                  if (pages <= 1) return null;
+                  return (
+                    <div style={{ padding: '0.9rem 1.5rem', borderTop: '1px solid rgba(196,150,10,0.12)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.72rem', color: '#8A7B68' }}>{Math.min((page-1)*PER+1,total)}–{Math.min(page*PER,total)} sur {total}</span>
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        <button type="button" onClick={() => setPage(p => Math.max(1, p-1))} disabled={page <= 1} style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem', border: '1px solid rgba(26,18,8,0.15)', background: 'white', cursor: page > 1 ? 'pointer' : 'not-allowed', color: page > 1 ? '#1A1208' : '#C4B090', borderRadius: '3px' }}>←</button>
+                        <span style={{ fontSize: '0.7rem', color: '#8A7B68' }}>{page} / {pages}</span>
+                        <button type="button" onClick={() => setPage(p => Math.min(pages, p+1))} disabled={page >= pages} style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem', border: '1px solid rgba(26,18,8,0.15)', background: 'white', cursor: page < pages ? 'pointer' : 'not-allowed', color: page < pages ? '#1A1208' : '#C4B090', borderRadius: '3px' }}>→</button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -504,7 +537,9 @@ export default function VolumetriePage() {
                   </thead>
                   <tbody>
                     {data?.ventesParProduitTaille
+                      .filter(v => v.produitNom.toLowerCase().includes(search.toLowerCase()))
                       .sort((a, b) => b.volumeVenduMl - a.volumeVenduMl)
+                      .slice((page - 1) * PER, page * PER)
                       .map((v, i) => {
                         const maxQte = Math.max(
                           ...(data?.ventesParProduitTaille.map(
@@ -631,6 +666,21 @@ export default function VolumetriePage() {
                       })}
                   </tbody>
                 </table>
+                {(() => {
+                  const total = (data?.ventesParProduitTaille ?? []).filter(v => v.produitNom.toLowerCase().includes(search.toLowerCase())).length;
+                  const pages = Math.ceil(total / PER) || 1;
+                  if (pages <= 1) return null;
+                  return (
+                    <div style={{ padding: '0.9rem 1.5rem', borderTop: '1px solid rgba(196,150,10,0.12)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.72rem', color: '#8A7B68' }}>{Math.min((page-1)*PER+1,total)}–{Math.min(page*PER,total)} sur {total}</span>
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        <button type="button" onClick={() => setPage(p => Math.max(1, p-1))} disabled={page <= 1} style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem', border: '1px solid rgba(26,18,8,0.15)', background: 'white', cursor: page > 1 ? 'pointer' : 'not-allowed', color: page > 1 ? '#1A1208' : '#C4B090', borderRadius: '3px' }}>←</button>
+                        <span style={{ fontSize: '0.7rem', color: '#8A7B68' }}>{page} / {pages}</span>
+                        <button type="button" onClick={() => setPage(p => Math.min(pages, p+1))} disabled={page >= pages} style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem', border: '1px solid rgba(26,18,8,0.15)', background: 'white', cursor: page < pages ? 'pointer' : 'not-allowed', color: page < pages ? '#1A1208' : '#C4B090', borderRadius: '3px' }}>→</button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
