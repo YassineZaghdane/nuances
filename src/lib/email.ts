@@ -2,39 +2,41 @@
  * @module Email
  * @description Envoi d'emails via Resend (confirmation commande + alertes stock)
  */
-import { Resend } from 'resend'
+import { Resend } from "resend";
 
 function getResend(): Resend | null {
-  const key = process.env.RESEND_API_KEY
-  if (!key) return null
-  return new Resend(key)
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return null;
+  return new Resend(key);
 }
 
-const FROM = process.env.FROM_EMAIL || 'onboarding@resend.dev'
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@nuances.tn'
+const FROM = process.env.FROM_EMAIL || "onboarding@resend.dev";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "benzaghden.fahmi@gmail.com";
 
 export async function envoyerConfirmationCommande(data: {
-  clientEmail: string
-  clientNom: string
-  numero: string
-  commandeId?: string
+  clientEmail: string;
+  clientNom: string;
+  numero: string;
+  commandeId?: string;
   lignes: Array<{
-    nom: string
-    taille: string
-    quantite: number
-    prixUnitaire: number
-  }>
-  montantTotal: number
-  fraisLivraison: number
-  adresseLivraison?: string
-  villeLivraison?: string
-  modePaiement?: string
+    nom: string;
+    taille: string;
+    quantite: number;
+    prixUnitaire: number;
+  }>;
+  montantTotal: number;
+  fraisLivraison: number;
+  adresseLivraison?: string;
+  villeLivraison?: string;
+  modePaiement?: string;
 }) {
   if (!process.env.RESEND_API_KEY || !data.clientEmail) {
-    return { success: false }
+    return { success: false };
   }
 
-  const lignesHTML = data.lignes.map(l => `
+  const lignesHTML = data.lignes
+    .map(
+      (l) => `
     <tr>
       <td style="padding:10px 14px;border-bottom:1px solid #F0EBE0;
                  font-size:14px;color:#1A1208">${l.nom}</td>
@@ -47,7 +49,9 @@ export async function envoyerConfirmationCommande(data: {
         ${(l.prixUnitaire * l.quantite).toFixed(0)} DT
       </td>
     </tr>
-  `).join('')
+  `,
+    )
+    .join("");
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -119,15 +123,19 @@ export async function envoyerConfirmationCommande(data: {
       </div>
     </div>
 
-    ${data.adresseLivraison ? `
+    ${
+      data.adresseLivraison
+        ? `
     <div style="background:#FAF7F2;padding:16px 20px;margin-bottom:20px;border:1px solid #EFE7D7">
       <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;
                   color:#8A7B68;margin-bottom:8px">Livraison</div>
       <div style="font-size:13px;color:#1A1208;line-height:1.6">
         ${data.adresseLivraison}<br/>
-        ${data.villeLivraison || ''}
+        ${data.villeLivraison || ""}
       </div>
-    </div>` : ''}
+    </div>`
+        : ""
+    }
 
     <p style="font-size:13px;color:#8A7B68;line-height:1.8;margin-bottom:20px">
       Notre équipe vous contactera sous 24h pour organiser la livraison.
@@ -136,7 +144,7 @@ export async function envoyerConfirmationCommande(data: {
     </p>
 
     <div style="text-align:center;margin-bottom:24px">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/commande/confirmation/${data.commandeId || data.numero}"
+      <a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/commande/confirmation/${data.commandeId || data.numero}"
          style="display:inline-block;background:#1A1208;color:white;border:1px solid #1A1208;
                 padding:14px 32px;font-size:12px;letter-spacing:3px;
                 text-transform:uppercase;text-decoration:none;box-shadow:0 8px 22px rgba(26,18,8,0.2)">
@@ -144,7 +152,7 @@ export async function envoyerConfirmationCommande(data: {
       </a>
     </div>
     <p style="text-align:center;font-size:11px;color:#C4B090;margin-bottom:12px">
-      Ou copiez ce lien : ${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/commande/confirmation/${data.commandeId || data.numero}
+      Ou copiez ce lien : ${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/commande/confirmation/${data.commandeId || data.numero}
     </p>
 
     <div style="background:#FAF7F2;border:1px solid #EDE5D4;padding:14px 16px;margin-bottom:8px">
@@ -170,7 +178,7 @@ export async function envoyerConfirmationCommande(data: {
   </div>
 </div>
 </body>
-</html>`
+</html>`;
 
   const text = [
     `Commande confirmée - ${data.numero}`,
@@ -179,27 +187,36 @@ export async function envoyerConfirmationCommande(data: {
     `Votre commande a bien été reçue par Nuances Parfums.`,
     ``,
     `Produits:`,
-    ...data.lignes.map((l) => `- ${l.nom} (${l.taille}) x${l.quantite} : ${(l.prixUnitaire * l.quantite).toFixed(0)} DT`),
+    ...data.lignes.map(
+      (l) =>
+        `- ${l.nom} (${l.taille}) x${l.quantite} : ${(l.prixUnitaire * l.quantite).toFixed(0)} DT`,
+    ),
     ``,
     `Total: ${data.montantTotal.toFixed(0)} DT`,
     `Livraison: ${Number(data.fraisLivraison).toFixed(0)} DT`,
-    data.adresseLivraison ? `Adresse: ${data.adresseLivraison}${data.villeLivraison ? `, ${data.villeLivraison}` : ''}` : '',
+    data.adresseLivraison
+      ? `Adresse: ${data.adresseLivraison}${data.villeLivraison ? `, ${data.villeLivraison}` : ""}`
+      : "",
     ``,
-    `Suivi: ${(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000')}?suivi=${data.numero}`,
+    `Suivi: ${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/commande/confirmation/${data.commandeId || data.numero}`,
     `Contact: +216 96 557 557`,
     `Instagram: https://www.instagram.com/nuances.parfums/`,
     `Facebook: https://www.facebook.com/profile.php?id=61584307961028`,
-  ].filter(Boolean).join('\n')
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   try {
-    const resend = getResend()
+    const resend = getResend();
     if (!resend) {
-      return { success: false }
+      return { success: false };
     }
-    const recipients = [data.clientEmail]
+    const recipients = [data.clientEmail];
     if (ADMIN_EMAIL && ADMIN_EMAIL !== data.clientEmail) {
-      recipients.push(ADMIN_EMAIL)
+      recipients.push(ADMIN_EMAIL);
     }
+    console.log(recipients);
+    console.log(FROM);
 
     const result = await resend.emails.send({
       from: FROM,
@@ -207,25 +224,32 @@ export async function envoyerConfirmationCommande(data: {
       subject: `✓ Commande ${data.numero} — Nuances Parfums`,
       html,
       text,
-    })
-    return { success: true, id: result.data?.id }
+    });
+    console.log(result);
+    console.log(result.data?.id);
+    console.log(result.data?.id);
+    return { success: true, id: result.data?.id };
   } catch (error) {
-    console.error('[Email] Erreur confirmation:', error)
-    return { success: false, error }
+    console.error("[Email] Erreur confirmation:", error);
+    return { success: false, error };
   }
 }
 
-export async function envoyerAlerteStock(alertes: Array<{
-  produitNom: string
-  taille: string
-  quantite: number
-  seuilAlerte: number
-}>) {
+export async function envoyerAlerteStock(
+  alertes: Array<{
+    produitNom: string;
+    taille: string;
+    quantite: number;
+    seuilAlerte: number;
+  }>,
+) {
   if (!process.env.RESEND_API_KEY) {
-    return { success: false }
+    return { success: false };
   }
 
-  const lignesHTML = alertes.map(a => `
+  const lignesHTML = alertes
+    .map(
+      (a) => `
     <tr>
       <td style="padding:10px 14px;border-bottom:1px solid #F0EBE0;
                  font-size:14px;color:#1A1208">${a.produitNom}</td>
@@ -238,7 +262,9 @@ export async function envoyerAlerteStock(alertes: Array<{
       <td style="padding:10px 14px;border-bottom:1px solid #F0EBE0;
                  font-size:14px;text-align:center;color:#8A7B68">${a.seuilAlerte}</td>
     </tr>
-  `).join('')
+  `,
+    )
+    .join("");
 
   const html = `<!DOCTYPE html>
 <html lang="fr">
@@ -254,7 +280,7 @@ export async function envoyerAlerteStock(alertes: Array<{
         Alerte Stock — Nuances Parfums
       </div>
       <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px">
-        ${alertes.length} produit${alertes.length > 1 ? 's' : ''} en rupture imminente
+        ${alertes.length} produit${alertes.length > 1 ? "s" : ""} en rupture imminente
       </div>
     </div>
   </div>
@@ -281,7 +307,7 @@ export async function envoyerAlerteStock(alertes: Array<{
     </table>
 
     <div style="text-align:center">
-      <a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/erp/stock"
+      <a href="${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/erp/stock"
          style="display:inline-block;background:#8B3A3A;color:white;
                 padding:14px 32px;font-size:12px;letter-spacing:3px;
                 text-transform:uppercase;text-decoration:none">
@@ -293,27 +319,27 @@ export async function envoyerAlerteStock(alertes: Array<{
   <div style="background:#FAF7F2;padding:20px;text-align:center;
               border-top:1px solid #EDE5D4">
     <div style="font-size:11px;color:#C4B090">
-      Nuances Parfums · ERP · ${new Date().toLocaleDateString('fr-FR')}
+      Nuances Parfums · ERP · ${new Date().toLocaleDateString("fr-FR")}
     </div>
   </div>
 </div>
 </body>
-</html>`
+</html>`;
 
   try {
-    const resend = getResend()
+    const resend = getResend();
     if (!resend) {
-      return { success: false }
+      return { success: false };
     }
     const result = await resend.emails.send({
       from: FROM,
       to: ADMIN_EMAIL,
-      subject: `⚠️ ${alertes.length} alerte${alertes.length > 1 ? 's' : ''} stock — Nuances Parfums`,
+      subject: `⚠️ ${alertes.length} alerte${alertes.length > 1 ? "s" : ""} stock — Nuances Parfums`,
       html,
-    })
-    return { success: true, id: result.data?.id }
+    });
+    return { success: true, id: result.data?.id };
   } catch (error) {
-    console.error('[Email] Erreur alerte stock:', error)
-    return { success: false, error }
+    console.error("[Email] Erreur alerte stock:", error);
+    return { success: false, error };
   }
 }

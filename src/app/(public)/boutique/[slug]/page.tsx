@@ -218,9 +218,10 @@ export default function FicheProduitPage() {
           <div style={{ paddingRight:'4rem' }}>
             <div style={{
               background:'linear-gradient(145deg,#EDE5D4,#D4C4A8)',
-              aspectRatio:'1', display:'flex', alignItems:'center',
+              aspectRatio:'4/5', display:'flex', alignItems:'center',
               justifyContent:'center', marginBottom:'1rem',
-              position:'relative', overflow:'hidden'
+              position:'relative', overflow:'hidden',
+              padding:'1.5rem',
             }}>
               <div style={{ position:'absolute', top:'1.2rem', left:'1.2rem', display:'flex', flexDirection:'column', gap:'0.4rem', zIndex:2 }}>
                 {produit.nouveaute && <span style={{ background:'#1A1208', color:'white', fontSize:'0.58rem', letterSpacing:'0.15em', textTransform:'uppercase', padding:'0.25rem 0.6rem' }}>Nouveauté</span>}
@@ -232,10 +233,14 @@ export default function FicheProduitPage() {
                   src={resolvedSrc || galleryImageUrl || ''}
                   alt={produit.nom}
                   style={{
-                    width:'100%',
-                    height:'100%',
-                    objectFit:'cover',
-                    display:'block'
+                    maxWidth:'100%',
+                    maxHeight:'100%',
+                    width:'auto',
+                    height:'auto',
+                    objectFit:'contain',
+                    display:'block',
+                    position:'relative', zIndex:1,
+                    filter:'drop-shadow(0 8px 24px rgba(26,18,8,0.12))',
                   }}
                 />
               ) : (
@@ -251,8 +256,8 @@ export default function FicheProduitPage() {
             {images.length > 1 && (
               <div style={{ display:'flex', gap:'0.6rem' }}>
                 {images.map((img, i) => (
-                  <button key={i} onClick={() => setImgActive(i)} style={{ width:'72px', height:'72px', border: imgActive === i ? '2px solid #C4960A' : '1px solid #EDE5D4', background:'#EDE5D4', cursor:'pointer', padding:0, overflow:'hidden' }}>
-                    <img src={resolvedSrc && i === imgActive ? resolvedSrc : img} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }}/>
+                  <button key={i} onClick={() => setImgActive(i)} style={{ width:'72px', height:'72px', border: imgActive === i ? '2px solid #C4960A' : '1px solid #EDE5D4', background:'linear-gradient(145deg,#EDE5D4,#D4C4A8)', cursor:'pointer', padding:'6px', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <img src={resolvedSrc && i === imgActive ? resolvedSrc : img} alt="" style={{ maxWidth:'100%', maxHeight:'100%', width:'auto', height:'auto', objectFit:'contain', display:'block' }}/>
                   </button>
                 ))}
               </div>

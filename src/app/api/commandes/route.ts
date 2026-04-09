@@ -275,7 +275,7 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // Déduire les matières premières (parfum pur + alcool) selon la formule
+        // Déduire les matières premières (parfum pur + alcool + flacons) selon la formule
         const conso = CONSOMMATION_PARFUM[ligne.taille];
         if (conso) {
           const mlParfum = conso.parfum * ligne.quantite;
@@ -301,6 +301,26 @@ export async function POST(request: NextRequest) {
             quantiteMl: mlAlcool,
             raison: `Commande ${numero} — ${ligne.quantite}× ${ligne.taille}`,
           });
+
+          // Déduire les flacons vides correspondants
+          const flacon = await tx.matierePremiere.findFirst({
+            where: { nom: { equals: `Flacon ${ligne.taille}`, mode: "insensitive" } },
+          });
+          if (flacon) {
+            await tx.matierePremiere.update({
+              where: { id: flacon.id },
+              data: { stockMl: Math.max(0, flacon.stockMl - ligne.quantite) },
+            });
+            await tx.mouvementMatiere.create({
+              data: {
+                matiereId: flacon.id,
+                type: "SORTIE",
+                quantiteMl: ligne.quantite,
+                raison: `Commande ${numero} — ${ligne.quantite}× ${ligne.taille}`,
+                commandeId: commande.id,
+              },
+            });
+          }
         }
       }
 

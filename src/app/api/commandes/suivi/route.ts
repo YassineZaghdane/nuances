@@ -54,9 +54,16 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Paramètre requis: id ou numero" }, { status: 400 });
     }
 
-    const commande = id
-      ? await prisma.commande.findUnique({ where: { id }, select: COMMANDE_SELECT })
-      : await prisma.commande.findUnique({ where: { numero: numero! }, select: COMMANDE_SELECT });
+    let commande = null;
+    if (id) {
+      // Try by DB id first, fallback to numero (in case someone passes the numero as id)
+      commande = await prisma.commande.findUnique({ where: { id }, select: COMMANDE_SELECT });
+      if (!commande) {
+        commande = await prisma.commande.findUnique({ where: { numero: id.toUpperCase() }, select: COMMANDE_SELECT });
+      }
+    } else if (numero) {
+      commande = await prisma.commande.findUnique({ where: { numero }, select: COMMANDE_SELECT });
+    }
 
     if (!commande) {
       return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });

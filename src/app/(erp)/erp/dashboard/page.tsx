@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
+import { StatsChart } from '@/components/erp/StatsChart'
 
 async function getData() {
   const now = new Date()
@@ -12,6 +13,7 @@ async function getData() {
   const [
     caMois, caSemaine,
     cmdMois, cmdAttente,
+    cmdLivreesMois,
     clients, alertes,
     derniers, topProduits,
   ] = await Promise.all([
@@ -25,6 +27,7 @@ async function getData() {
     }),
     prisma.commande.count({ where: { createdAt: { gte: debut } } }),
     prisma.commande.count({ where: { statut: 'EN_ATTENTE' } }),
+    prisma.commande.count({ where: { statut: { in: ['LIVREE','EXPEDIEE'] }, createdAt: { gte: debut } } }),
     prisma.client.count(),
     prisma.stock.count({ where: { quantite: { lte: 5 } } }),
     prisma.commande.findMany({
@@ -87,7 +90,7 @@ async function getData() {
   }
 
   return {
-    caMois, caSemaine, cmdMois, cmdAttente,
+    caMois, caSemaine, cmdMois, cmdAttente, cmdLivreesMois,
     clients, alertes, derniers, topProduits,
     venteBoutique, venteEnLigne, venteWhatsapp, venteInstagram,
   }
@@ -111,11 +114,12 @@ export default async function DashboardPage() {
   if (role === 'VENDEUR') redirect('/erp/vente-place')
 
   const d = await getData()
-  const ca    = Number(d.caMois._sum.montantTotal || 0)
-  const caSem = Number(d.caSemaine._sum.montantTotal || 0)
-  const caBoutique = Number(d.venteBoutique._sum.montantTotal || 0)
-  const nbBoutique = Number(d.venteBoutique._count || 0)
-  const maxQte = Math.max(...d.topProduits.map(p => p.qte), 1)
+  const ca          = Number(d.caMois._sum.montantTotal || 0)
+  const caSem       = Number(d.caSemaine._sum.montantTotal || 0)
+  const caBoutique  = Number(d.venteBoutique._sum.montantTotal || 0)
+  const nbBoutique  = Number(d.venteBoutique._count || 0)
+  const panierMoyen = d.cmdLivreesMois > 0 ? ca / d.cmdLivreesMois : 0
+  const maxQte      = Math.max(...d.topProduits.map(p => p.qte), 1)
 
   const canaux = [
     {
@@ -198,11 +202,11 @@ export default async function DashboardPage() {
           gap:'1rem', marginBottom:'1.5rem',
         }}>
           {[
-            { label:'CA ce mois',    value:`${ca.toFixed(0)} DT`,          sub:`${caSem.toFixed(0)} DT cette semaine`, accent:'#2E7D52', bg:'#E4F2EB' },
-            { label:'Commandes',     value:d.cmdMois.toString(),            sub:`${d.cmdAttente} en attente`,           accent:'#B8860B', bg:'#FFF8E6' },
-            { label:'Clients',       value:d.clients.toString(),            sub:'base totale',                          accent:'#4A7A9B', bg:'#EEF5FA' },
-            { label:'Ventes sur place', value:nbBoutique.toString(),        sub:`${caBoutique.toFixed(0)} DT ce mois`, accent:'#C4960A', bg:'#FFF8E6' },
-            { label:'Alertes stock', value:d.alertes.toString(),            sub:d.alertes > 0 ? 'réappro. urgent' : 'Tout est OK', accent: d.alertes > 0 ? '#8B3A3A' : '#2E7D52', bg: d.alertes > 0 ? '#FAEAEA' : '#E4F2EB' },
+            { label:'CA ce mois',    value:`${ca.toFixed(0)} DT`,             sub:`${caSem.toFixed(0)} DT cette semaine`,                         accent:'#2E7D52', bg:'#E4F2EB' },
+            { label:'Commandes',     value:d.cmdMois.toString(),             sub:`${d.cmdAttente} en attente`,                                   accent:'#B8860B', bg:'#FFF8E6' },
+            { label:'Panier moyen',  value:`${panierMoyen.toFixed(0)} DT`,  sub:`${d.cmdLivreesMois} cmd livrées ce mois`,                      accent:'#7A5C9B', bg:'#F4EFF9' },
+            { label:'Clients',       value:d.clients.toString(),             sub:'base totale',                                                   accent:'#4A7A9B', bg:'#EEF5FA' },
+            { label:'Alertes stock', value:d.alertes.toString(),             sub:d.alertes > 0 ? 'réappro. urgent' : 'Tout est OK',              accent: d.alertes > 0 ? '#8B3A3A' : '#2E7D52', bg: d.alertes > 0 ? '#FAEAEA' : '#E4F2EB' },
           ].map((k, i) => (
             <div key={i} style={{
               background:'#FDFAF5', border:'1px solid #EDE5D4',
@@ -216,6 +220,9 @@ export default async function DashboardPage() {
             </div>
           ))}
         </div>
+
+        {/* CHART VENTES */}
+        <StatsChart />
 
         {/* RÉPARTITION CANAUX DE VENTE */}
         <div style={{
@@ -345,7 +352,7 @@ export default async function DashboardPage() {
               <div style={{ padding:'0.8rem' }}>
                 {[
                   { href:'/erp/commandes',       label:'Gérer les commandes',  sub:`${d.cmdAttente} en attente` },
-                  { href:'/erp/vente-place',      label:'Vente sur place',      sub:`${nbBoutique} cmd · ${caBoutique.toFixed(0)} DT` },
+                  { href:'/erp/vente-place',      label:'Vente sur place',      sub:`${nbBoutique} cmd · ${caBoutique.toFixed(0)} DT ce mois` },
                   { href:'/erp/stock',            label:'Contrôle du stock',    sub:`${d.alertes} alertes` },
                   { href:'/erp/stock/volumetrie', label:'Stock kg / ml',        sub:'Analyse volumétrique' },
                   { href:'/erp/clients',          label:'Base clients',         sub:`${d.clients} clients` },
