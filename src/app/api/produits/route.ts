@@ -28,7 +28,7 @@ const produitPostSchema = z.object({
   categorieId: z.string().min(1).max(100),
   description: z.string().max(1000).optional().nullable(),
   notes:       z.string().max(500).optional().nullable(),
-  images:      z.array(z.string().url()).max(5).optional().default([]),
+  images:      z.array(z.string().min(1)).max(5).optional().default([]),
   actif:       z.boolean().optional().default(true),
   featured:    z.boolean().optional().default(false),
   exclusif:    z.boolean().optional().default(false),

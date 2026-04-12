@@ -12,7 +12,7 @@ export const produitSchema = z.object({
   notes: z.string().optional(),
   prix: z.number().positive("Prix invalide"),
   prixAchat: z.number().nonnegative().optional().nullable(),
-  images: z.array(z.string().url()).default([]),
+  images: z.array(z.string().min(1)).default([]),
   actif: z.boolean().default(true),
   featured: z.boolean().default(false),
   categorieId: z.string().min(1, "Catégorie requise"),

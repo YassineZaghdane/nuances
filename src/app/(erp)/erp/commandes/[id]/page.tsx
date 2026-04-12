@@ -15,16 +15,28 @@ const STATUT_STYLE: Record<string, { color: string; bg: string; label: string }>
 }
 const STATUTS_ORDRE = ['EN_ATTENTE', 'CONFIRMEE', 'EN_PREPARATION', 'EXPEDIEE', 'LIVREE', 'ANNULEE']
 
+const SOURCE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  INSTAGRAM:        { label: 'Instagram',  color: '#C13584', bg: '#FCF0F6' },
+  FACEBOOK:         { label: 'Facebook',   color: '#1877F2', bg: '#EAF2FF' },
+  TIKTOK:           { label: 'TikTok',     color: '#010101', bg: '#F0F0F0' },
+  WHATSAPP:         { label: 'WhatsApp',   color: '#25D366', bg: '#EAFAF1' },
+  BOUTIQUE:         { label: 'Boutique',   color: '#C4960A', bg: '#FFF8E6' },
+  SITE_WEB:         { label: 'Site web',   color: '#4A7A9B', bg: '#EEF5FA' },
+  BOUCHE_A_OREILLE: { label: 'Bouche à oreille', color: '#7A5C9B', bg: '#F4EFF9' },
+}
+
 type CommandeState = {
   id: string
   numero: string
   statut: string
+  source?: string
   montantTotal: number
   client?: { nom: string; telephone?: string; email?: string }
   adresseLivraison?: string
   villeLivraison?: string
   lignes?: { produit?: { nom: string }; taille: string; quantite: number; prixUnitaire: number }[]
   notes?: string | null
+  createdBy?: { nom: string; role: string } | null
 } | null
 
 export default function CommandeDetailPage() {
@@ -235,6 +247,42 @@ export default function CommandeDetailPage() {
                   </div>
                 )
               })}
+            </div>
+          </div>
+
+          {/* Source & Vendeur */}
+          <div style={{ background: '#FDFAF5', border: '1px solid #EDE5D4', borderRadius: '6px', padding: '1.2rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+            {(() => {
+              const s = SOURCE_CONFIG[cmd.source || 'SITE_WEB'] || SOURCE_CONFIG['SITE_WEB']
+              return (
+                <div>
+                  <div style={{ fontSize: '0.6rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#C4B090', marginBottom: '0.4rem' }}>Provenance</div>
+                  <span style={{ display: 'inline-block', padding: '0.2rem 0.65rem', background: s.bg, color: s.color, fontSize: '0.72rem', borderRadius: '3px', fontWeight: 500 }}>
+                    {s.label}
+                  </span>
+                </div>
+              )
+            })()}
+            <div>
+              <div style={{ fontSize: '0.6rem', letterSpacing: '0.18em', textTransform: 'uppercase', color: '#C4B090', marginBottom: '0.4rem' }}>Saisie par</div>
+              {cmd.createdBy ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <div style={{
+                    width: '22px', height: '22px', borderRadius: '50%',
+                    background: '#1A1208', color: 'white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.6rem', fontWeight: 700, flexShrink: 0,
+                  }}>
+                    {cmd.createdBy.nom.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.8rem', color: '#1A1208', fontWeight: 500 }}>{cmd.createdBy.nom}</div>
+                    <div style={{ fontSize: '0.62rem', color: '#C4B090' }}>{cmd.createdBy.role}</div>
+                  </div>
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.75rem', color: '#C4B090' }}>Commande en ligne</span>
+              )}
             </div>
           </div>
 

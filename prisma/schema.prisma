@@ -11,14 +11,15 @@ datasource db {
 
 // ─── UTILISATEURS ERP ───────────────────────────
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String     @id @default(cuid())
+  email     String     @unique
   password  String
   nom       String
-  role      Role     @default(EMPLOYE)
-  actif     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      Role       @default(EMPLOYE)
+  actif     Boolean    @default(true)
+  commandes Commande[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 enum Role {
@@ -124,6 +125,8 @@ model Client {
 
 enum Source {
   INSTAGRAM
+  FACEBOOK
+  TIKTOK
   WHATSAPP
   BOUCHE_A_OREILLE
   BOUTIQUE
@@ -146,6 +149,8 @@ model Commande {
   villeLivraison   String?
   notes            String?
   source           String           @default("SITE_WEB")
+  createdById      String?
+  createdBy        User?            @relation(fields: [createdById], references: [id])
   livraison        Livraison?
   facture          Facture?
   createdAt        DateTime         @default(now())

@@ -48,7 +48,8 @@ export function ProduitForm({ produit, mode }: Props) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
-  const [newImageUrl, setNewImageUrl] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
 
   const [form, setForm] = useState({
     nom:         produit?.nom         || '',
@@ -94,11 +95,38 @@ export function ProduitForm({ produit, mode }: Props) {
   const set = (key: string, value: any) =>
     setForm(f => ({ ...f, [key]: value }))
 
-  const addImage = () => {
-    const url = newImageUrl.trim()
-    if (!url || form.images.length >= 5) return
-    set('images', [...form.images, url])
-    setNewImageUrl('')
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    if (form.images.length >= 5) return
+
+    setUploadError('')
+    setUploading(true)
+
+    const remaining = 5 - form.images.length
+    const toUpload = Array.from(files).slice(0, remaining)
+    const newUrls: string[] = []
+
+    for (const file of toUpload) {
+      const fd = new FormData()
+      fd.append('file', file)
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: fd })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Erreur upload')
+        newUrls.push(data.url)
+      } catch (err: any) {
+        setUploadError(err.message || 'Erreur lors de l\'upload')
+        break
+      }
+    }
+
+    if (newUrls.length > 0) {
+      set('images', [...form.images, ...newUrls])
+    }
+
+    setUploading(false)
+    e.target.value = ''
   }
 
   const removeImage = (i: number) =>
@@ -343,36 +371,58 @@ export function ProduitForm({ produit, mode }: Props) {
             </div>
           )}
 
-          {/* Ajouter une image */}
+          {/* Upload */}
           {form.images.length < 5 && (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <label style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: '0.5rem',
+              padding: '1.5rem',
+              border: '2px dashed #EDE5D4',
+              borderRadius: '6px',
+              cursor: uploading ? 'not-allowed' : 'pointer',
+              background: uploading ? 'rgba(196,176,144,0.06)' : 'white',
+              transition: 'border-color 0.2s, background 0.2s',
+            }}
+              onMouseEnter={e => { if (!uploading) (e.currentTarget as HTMLLabelElement).style.borderColor = '#C4960A' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLLabelElement).style.borderColor = '#EDE5D4' }}
+            >
               <input
-                style={{ ...inputStyle, flex: 1 }}
-                type="text"
-                placeholder="https://... URL de l'image"
-                value={newImageUrl}
-                onChange={e => setNewImageUrl(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addImage()}
-                onFocus={e => (e.target as HTMLInputElement).style.borderColor = '#C4960A'}
-                onBlur={e => (e.target as HTMLInputElement).style.borderColor = '#EDE5D4'}
+                type="file"
+                accept="image/*"
+                multiple
+                disabled={uploading}
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
               />
-              <button
-                onClick={addImage}
-                disabled={!newImageUrl.trim()}
-                style={{
-                  padding: '0.75rem 1.2rem',
-                  background: newImageUrl.trim() ? '#1A1208' : '#C4B090',
-                  color: 'white', border: 'none',
-                  cursor: newImageUrl.trim() ? 'pointer' : 'not-allowed',
-                  fontSize: '0.75rem', fontFamily: 'Jost,sans-serif',
-                  letterSpacing: '0.1em', borderRadius: '3px',
-                  transition: 'background 0.2s',
-                }}
-              >+ Ajouter</button>
-            </div>
+              {uploading ? (
+                <span style={{ fontSize: '0.8rem', color: '#C4960A', fontFamily: 'Jost,sans-serif' }}>
+                  Chargement…
+                </span>
+              ) : (
+                <>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C4B090" strokeWidth="1.5">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  <span style={{ fontSize: '0.78rem', color: '#8A7B68', fontFamily: 'Jost,sans-serif' }}>
+                    Cliquer pour choisir {5 - form.images.length > 1 ? 'des images' : 'une image'}
+                  </span>
+                  <span style={{ fontSize: '0.65rem', color: '#C4B090', fontFamily: 'Jost,sans-serif' }}>
+                    JPEG, PNG, WebP · max 5 Mo · {5 - form.images.length} emplacement{5 - form.images.length > 1 ? 's' : ''} restant{5 - form.images.length > 1 ? 's' : ''}
+                  </span>
+                </>
+              )}
+            </label>
           )}
 
-          {form.images.length === 0 && (
+          {uploadError && (
+            <p style={{ fontSize: '0.75rem', color: '#8B3A3A', marginTop: '0.5rem' }}>
+              {uploadError}
+            </p>
+          )}
+
+          {form.images.length === 0 && !uploading && (
             <p style={{ fontSize: '0.75rem', color: '#C4B090', marginTop: '0.5rem' }}>
               Aucune image — le flacon CSS sera affiché par défaut.
             </p>

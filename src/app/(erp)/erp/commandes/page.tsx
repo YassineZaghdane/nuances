@@ -13,14 +13,26 @@ const STATUTS = [
   { val: 'ANNULEE',        label: 'Annulée' },
 ]
 
+const SOURCE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  INSTAGRAM:        { label: 'Instagram',  color: '#C13584', bg: '#FCF0F6' },
+  FACEBOOK:         { label: 'Facebook',   color: '#1877F2', bg: '#EAF2FF' },
+  TIKTOK:           { label: 'TikTok',     color: '#010101', bg: '#F0F0F0' },
+  WHATSAPP:         { label: 'WhatsApp',   color: '#25D366', bg: '#EAFAF1' },
+  BOUTIQUE:         { label: 'Boutique',   color: '#C4960A', bg: '#FFF8E6' },
+  SITE_WEB:         { label: 'Site web',   color: '#4A7A9B', bg: '#EEF5FA' },
+  BOUCHE_A_OREILLE: { label: 'Bouche à oreille', color: '#7A5C9B', bg: '#F4EFF9' },
+}
+
 interface Commande {
   id: string
   numero: string
   statut: string
+  source?: string
   montantTotal: number
   createdAt: string
   client: { nom: string }
   lignes: { quantite: number }[]
+  createdBy?: { nom: string; role: string } | null
 }
 
 export default function CommandesPage() {
@@ -115,7 +127,7 @@ export default function CommandesPage() {
 
       {/* Table */}
       <ErpTable
-        headers={['Numéro', 'Client', 'Articles', 'Montant', 'Statut', 'Date', '']}
+        headers={['Numéro', 'Client', 'Source', 'Articles', 'Montant', 'Statut', 'Vendeur', 'Date', '']}
         footer={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.72rem', color: '#C4B090' }}>
@@ -166,7 +178,7 @@ export default function CommandesPage() {
         {commandes.length === 0 ? (
           <tr>
             <td
-              colSpan={7}
+              colSpan={9}
               style={{
                 padding: '3rem',
                 textAlign: 'center',
@@ -234,6 +246,21 @@ export default function CommandesPage() {
                 </td>
 
                 <td style={{ padding: '0.8rem 1rem' }}>
+                  {(() => {
+                    const s = SOURCE_CONFIG[cmd.source || 'SITE_WEB'] || SOURCE_CONFIG['SITE_WEB']
+                    return (
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '0.18rem 0.55rem',
+                        background: s.bg, color: s.color,
+                        fontSize: '0.62rem', borderRadius: '3px',
+                        fontWeight: 500, whiteSpace: 'nowrap',
+                      }}>{s.label}</span>
+                    )
+                  })()}
+                </td>
+
+                <td style={{ padding: '0.8rem 1rem' }}>
                   <span style={{ fontSize: '0.78rem', color: '#8A7B68' }}>{articles}</span>
                 </td>
 
@@ -251,6 +278,28 @@ export default function CommandesPage() {
 
                 <td style={{ padding: '0.8rem 1rem' }}>
                   <StatutBadge statut={cmd.statut} />
+                </td>
+
+                <td style={{ padding: '0.8rem 1rem' }}>
+                  {cmd.createdBy ? (
+                    <span style={{
+                      fontSize: '0.72rem', color: '#1A1208',
+                      display: 'flex', alignItems: 'center', gap: '0.3rem',
+                    }}>
+                      <span style={{
+                        width: '18px', height: '18px', borderRadius: '50%',
+                        background: '#1A1208', color: 'white',
+                        display: 'inline-flex', alignItems: 'center',
+                        justifyContent: 'center', fontSize: '0.55rem',
+                        fontWeight: 700, flexShrink: 0,
+                      }}>
+                        {cmd.createdBy.nom.charAt(0).toUpperCase()}
+                      </span>
+                      {cmd.createdBy.nom}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '0.7rem', color: '#C4B090' }}>—</span>
+                  )}
                 </td>
 
                 <td style={{ padding: '0.8rem 1rem' }}>

@@ -20,8 +20,11 @@ export default function VentePlacePage() {
   const [produits, setProduits] = useState<Produit[]>([])
   const [panier, setPanier] = useState<LignePanier[]>([])
   const [search, setSearch] = useState('')
-  const [client, setClient] = useState({ nom: '', telephone: '' })
+  const [client, setClient] = useState({ nom: '', telephone: '', adresse: '' })
   const [paiement, setPaiement] = useState('CASH')
+  const [mode, setMode] = useState<'boutique' | 'livraison'>('boutique')
+  const [plateforme, setPlateforme] = useState('INSTAGRAM')
+  const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState('')
   const [fullscreen, setFullscreen] = useState(false)
@@ -58,12 +61,23 @@ export default function VentePlacePage() {
     else setPanier(prev => prev.map(l => l.produitId === produitId && l.taille === taille ? { ...l, quantite: qty } : l))
   }
 
-  const total = panier.reduce((s, l) => s + l.prix * l.quantite, 0)
+  const sousTotal = panier.reduce((s, l) => s + l.prix * l.quantite, 0)
+  const FRAIS_LIVRAISON = 8
+  const fraisLivraison = mode === 'livraison' ? FRAIS_LIVRAISON : 0
+  const total = sousTotal + fraisLivraison
 
   const valider = async () => {
     if (panier.length === 0) return
+    if (mode === 'livraison') {
+      if (!client.nom.trim() || !client.telephone.trim() || !client.adresse.trim()) {
+        setFormError('Nom, téléphone et adresse sont obligatoires pour une livraison.')
+        return
+      }
+    }
+    setFormError('')
     setSaving(true)
     try {
+      const source = mode === 'boutique' ? 'BOUTIQUE' : plateforme
       const res = await fetch('/api/commandes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -71,6 +85,7 @@ export default function VentePlacePage() {
           client: {
             nom: client.nom || 'Client boutique',
             telephone: client.telephone || '00000000',
+            adresse: client.adresse || undefined,
           },
           lignes: panier.map(l => ({
             produitId: l.produitId,
@@ -78,13 +93,15 @@ export default function VentePlacePage() {
             quantite: l.quantite,
             prixUnitaire: l.prix,
           })),
-          source: 'BOUTIQUE',
+          source,
           modePaiement: paiement,
-          fraisLivraison: 0,
+          fraisLivraison,
           montantTotal: total,
-          statut: 'LIVREE',
-          notes: `Vente sur place — ${paiement}`,
-          adresseLivraison: 'Boutique Nabeul',
+          statut: mode === 'boutique' ? 'LIVREE' : 'EN_ATTENTE',
+          notes: mode === 'boutique'
+            ? `Vente sur place — ${paiement}`
+            : `Livraison — ${source} — ${paiement}`,
+          adresseLivraison: mode === 'livraison' ? client.adresse : 'Boutique Nabeul',
           villeLivraison: 'Nabeul',
         }),
       })
@@ -92,7 +109,10 @@ export default function VentePlacePage() {
       if (!res.ok) throw new Error(data.error || 'Erreur')
       setSuccess(data.numero || 'OK')
       setPanier([])
-      setClient({ nom: '', telephone: '' })
+      setClient({ nom: '', telephone: '', adresse: '' })
+      setMode('boutique')
+      setPlateforme('INSTAGRAM')
+      setPaiement('CASH')
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Erreur')
     } finally {
@@ -186,9 +206,17 @@ export default function VentePlacePage() {
     </div>
   )
 
+  const inputSt: React.CSSProperties = {
+    width: '100%', padding: '0.6rem 0.8rem',
+    border: '1px solid #EDE5D4', background: 'white',
+    fontFamily: 'Jost,sans-serif', fontSize: '0.8rem',
+    color: '#1A1208', outline: 'none', borderRadius: '3px',
+  }
+
   const caisse = (
     <div style={{ position: 'sticky', top: '76px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
+      {/* ── Panier ── */}
       <div style={{ background: '#FDFAF5', border: '1px solid #EDE5D4', borderRadius: '6px', overflow: 'hidden' }}>
         <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #EDE5D4', display: 'flex', justifyContent: 'space-between' }}>
           <span style={{ fontFamily: 'Cormorant Garamond,serif', fontSize: '1.05rem', color: '#1A1208' }}>Panier</span>
@@ -227,56 +255,150 @@ export default function VentePlacePage() {
 
         {panier.length > 0 && (
           <div style={{ padding: '0.8rem 1.5rem', borderTop: '1px solid #EDE5D4', background: '#FAF7F2' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
-              <span style={{ fontSize: '0.78rem', color: '#8A7B68' }}>Total</span>
-              <span style={{ fontFamily: 'Cormorant Garamond,serif', fontSize: '1.3rem', color: '#C4960A' }}>{total.toFixed(0)} DT</span>
+            {mode === 'livraison' && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem' }}>
+                <span style={{ fontSize: '0.72rem', color: '#8A7B68' }}>Sous-total</span>
+                <span style={{ fontFamily: 'Cormorant Garamond,serif', fontSize: '0.95rem', color: '#8A7B68' }}>{sousTotal.toFixed(0)} DT</span>
+              </div>
+            )}
+            {mode === 'livraison' && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '0.72rem', color: '#4A7A9B' }}>Frais de livraison</span>
+                <span style={{ fontFamily: 'Cormorant Garamond,serif', fontSize: '0.95rem', color: '#4A7A9B' }}>+{FRAIS_LIVRAISON} DT</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.78rem', color: '#8A7B68', fontWeight: 600 }}>Total</span>
+              <span style={{ fontFamily: 'Cormorant Garamond,serif', fontSize: '1.3rem', color: '#C4960A', fontWeight: 600 }}>{total.toFixed(0)} DT</span>
             </div>
           </div>
         )}
       </div>
 
-      <div style={{ background: '#FDFAF5', border: '1px solid #EDE5D4', borderRadius: '6px', padding: '1rem 1.5rem' }}>
-        <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C4B090', marginBottom: '0.8rem' }}>Client (optionnel)</div>
+      {/* ── Mode : Boutique / Livraison ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0' }}>
+        {[
+          { val: 'boutique' as const,  label: '🏪 Boutique',  sub: 'Vente immédiate' },
+          { val: 'livraison' as const, label: '🚚 Livraison',  sub: '+8 DT · formulaire' },
+        ].map((opt, i) => (
+          <button key={opt.val} type="button" onClick={() => { setMode(opt.val); setFormError('') }} style={{
+            padding: '0.75rem 0.5rem',
+            background: mode === opt.val ? '#1A1208' : '#FDFAF5',
+            color: mode === opt.val ? 'white' : '#8A7B68',
+            border: '1px solid #EDE5D4',
+            borderLeft: i === 1 ? 'none' : '1px solid #EDE5D4',
+            borderRadius: i === 0 ? '6px 0 0 6px' : '0 6px 6px 0',
+            cursor: 'pointer', fontFamily: 'Jost,sans-serif',
+            fontSize: '0.75rem', transition: 'all 0.18s',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.15rem',
+          }}>
+            <span style={{ fontWeight: 600 }}>{opt.label}</span>
+            <span style={{ fontSize: '0.6rem', opacity: 0.7 }}>{opt.sub}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Plateforme (livraison uniquement) ── */}
+      {mode === 'livraison' && (
+        <div style={{ background: '#FDFAF5', border: '1px solid #EDE5D4', borderRadius: '6px', padding: '1rem 1.5rem' }}>
+          <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C4B090', marginBottom: '0.8rem' }}>
+            Provenance *
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
+            {[
+              { val: 'INSTAGRAM', label: 'Instagram', icon: '📸', color: '#C13584' },
+              { val: 'FACEBOOK',  label: 'Facebook',  icon: '👤', color: '#1877F2' },
+              { val: 'TIKTOK',    label: 'TikTok',    icon: '🎵', color: '#010101' },
+              { val: 'WHATSAPP',  label: 'WhatsApp',  icon: '💬', color: '#25D366' },
+            ].map(opt => (
+              <button key={opt.val} type="button" onClick={() => setPlateforme(opt.val)} style={{
+                padding: '0.65rem 0.5rem',
+                background: plateforme === opt.val ? opt.color : 'white',
+                color: plateforme === opt.val ? 'white' : '#8A7B68',
+                border: `1px solid ${plateforme === opt.val ? opt.color : '#EDE5D4'}`,
+                cursor: 'pointer', fontFamily: 'Jost,sans-serif',
+                fontSize: '0.72rem', borderRadius: '4px',
+                textAlign: 'center', transition: 'all 0.18s',
+                display: 'flex', alignItems: 'center',
+                justifyContent: 'center', gap: '0.4rem',
+                fontWeight: plateforme === opt.val ? 600 : 400,
+              }}>
+                <span>{opt.icon}</span>
+                <span>{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Formulaire client ── */}
+      <div style={{ background: '#FDFAF5', border: `1px solid ${formError ? '#D49090' : '#EDE5D4'}`, borderRadius: '6px', padding: '1rem 1.5rem' }}>
+        <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C4B090', marginBottom: '0.8rem' }}>
+          Client {mode === 'boutique' ? '(optionnel)' : '*'}
+        </div>
         <input
           placeholder="Nom du client"
           value={client.nom}
-          onChange={e => setClient({ ...client, nom: e.target.value })}
-          style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #EDE5D4', background: 'white', fontFamily: 'Jost,sans-serif', fontSize: '0.8rem', color: '#1A1208', outline: 'none', borderRadius: '3px', marginBottom: '0.5rem' }}
+          onChange={e => { setClient({ ...client, nom: e.target.value }); setFormError('') }}
+          style={{ ...inputSt, marginBottom: '0.5rem', borderColor: formError && !client.nom.trim() ? '#D49090' : '#EDE5D4' }}
         />
         <input
           placeholder="Téléphone"
           value={client.telephone}
-          onChange={e => setClient({ ...client, telephone: e.target.value })}
-          style={{ width: '100%', padding: '0.6rem 0.8rem', border: '1px solid #EDE5D4', background: 'white', fontFamily: 'Jost,sans-serif', fontSize: '0.8rem', color: '#1A1208', outline: 'none', borderRadius: '3px' }}
+          onChange={e => { setClient({ ...client, telephone: e.target.value }); setFormError('') }}
+          style={{ ...inputSt, marginBottom: mode === 'livraison' ? '0.5rem' : '0', borderColor: formError && !client.telephone.trim() ? '#D49090' : '#EDE5D4' }}
         />
+        {mode === 'livraison' && (
+          <input
+            placeholder="Adresse de livraison"
+            value={client.adresse}
+            onChange={e => { setClient({ ...client, adresse: e.target.value }); setFormError('') }}
+            style={{ ...inputSt, borderColor: formError && !client.adresse.trim() ? '#D49090' : '#EDE5D4' }}
+          />
+        )}
+        {formError && (
+          <div style={{ fontSize: '0.72rem', color: '#8B3A3A', marginTop: '0.5rem' }}>{formError}</div>
+        )}
       </div>
 
+      {/* ── Paiement ── */}
       <div style={{ background: '#FDFAF5', border: '1px solid #EDE5D4', borderRadius: '6px', padding: '1rem 1.5rem' }}>
         <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C4B090', marginBottom: '0.8rem' }}>Mode de paiement</div>
         <div style={{ display: 'flex', gap: '0.4rem' }}>
-          {[
-            { val: 'CASH', label: '💵 Espèces / Cash' },
-            { val: 'VIREMENT', label: '🏦 Virement' },
-          ].map(opt => (
+          {(mode === 'boutique'
+            ? [
+                { val: 'CASH',     label: '💵 Cash' },
+                { val: 'VIREMENT', label: '🏦 Virement' },
+              ]
+            : [
+                { val: 'CASH',               label: '💵 Cash' },
+                { val: 'VIREMENT',           label: '🏦 Virement' },
+                { val: 'PAIEMENT_LIVRAISON', label: '🚪 À la livraison' },
+              ]
+          ).map(opt => (
             <button key={opt.val} type="button" onClick={() => setPaiement(opt.val)} style={{
-              flex: 1, padding: '0.55rem',
+              flex: 1, padding: '0.55rem 0.3rem',
               background: paiement === opt.val ? '#1A1208' : 'white',
               color: paiement === opt.val ? 'white' : '#8A7B68',
               border: `1px solid ${paiement === opt.val ? '#1A1208' : '#EDE5D4'}`,
               cursor: 'pointer', fontFamily: 'Jost,sans-serif',
-              fontSize: '0.72rem', borderRadius: '3px', transition: 'all 0.18s',
+              fontSize: '0.65rem', borderRadius: '3px', transition: 'all 0.18s',
             }}>{opt.label}</button>
           ))}
         </div>
       </div>
 
+      {/* ── Bouton valider ── */}
       <button
         type="button"
         onClick={valider}
         disabled={saving || panier.length === 0}
         style={{
           width: '100%', padding: '1rem',
-          background: (saving || panier.length === 0) ? '#C4B090' : 'linear-gradient(135deg,#2E7D52,#1B5E3B)',
+          background: (saving || panier.length === 0) ? '#C4B090'
+            : mode === 'livraison'
+              ? 'linear-gradient(135deg,#4A7A9B,#2E5A7A)'
+              : 'linear-gradient(135deg,#2E7D52,#1B5E3B)',
           color: 'white', border: 'none',
           fontSize: '0.8rem', fontFamily: 'Jost,sans-serif',
           letterSpacing: '0.15em', textTransform: 'uppercase',
@@ -285,7 +407,13 @@ export default function VentePlacePage() {
           boxShadow: panier.length > 0 ? '0 6px 20px rgba(46,125,82,0.25)' : 'none',
           transition: 'all 0.2s',
         }}
-      >{saving ? 'Enregistrement…' : `✓ Encaisser ${total.toFixed(0)} DT`}</button>
+      >
+        {saving
+          ? 'Enregistrement…'
+          : mode === 'livraison'
+            ? `🚚 Créer la livraison — ${total.toFixed(0)} DT`
+            : `✓ Encaisser ${total.toFixed(0)} DT`}
+      </button>
     </div>
   )
 

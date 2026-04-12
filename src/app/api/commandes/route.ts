@@ -31,7 +31,7 @@ const commandeSchema = z.object({
   })).min(1).max(20),
   fraisLivraison:   z.number().min(0).max(500).optional().default(0),
   modePaiement:     z.enum(["CASH","VIREMENT","PAIEMENT_LIVRAISON"]).optional().default("PAIEMENT_LIVRAISON"),
-  source:           z.enum(["INSTAGRAM","WHATSAPP","BOUCHE_A_OREILLE","BOUTIQUE","SITE_WEB"]).optional().default("SITE_WEB"),
+  source:           z.enum(["INSTAGRAM","FACEBOOK","TIKTOK","WHATSAPP","BOUCHE_A_OREILLE","BOUTIQUE","SITE_WEB"]).optional().default("SITE_WEB"),
   adresseLivraison: z.string().max(200).optional(),
   villeLivraison:   z.string().max(100).optional(),
   notes:            z.string().max(500).optional(),
@@ -81,6 +81,7 @@ export async function GET(req: Request) {
         include: {
           client: { select: { nom: true, telephone: true } },
           lignes: { select: { quantite: true } },
+          createdBy: { select: { nom: true, role: true } },
         },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
@@ -114,6 +115,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const session = await getServerSession(authOptions);
+  const createdById = (session?.user as { id?: string })?.id ?? null;
+
   const body = await request.json();
 
   const parsed = commandeSchema.safeParse(body);
@@ -139,7 +143,8 @@ export async function POST(request: NextRequest) {
       let dbClient = await tx.client.findFirst({
         where: { telephone: client.telephone },
       });
-      const clientSource = ["INSTAGRAM", "WHATSAPP", "BOUTIQUE", "SITE_WEB", "BOUCHE_A_OREILLE"].includes(source) ? source : "SITE_WEB";
+      const validClientSources = ["INSTAGRAM", "FACEBOOK", "TIKTOK", "WHATSAPP", "BOUTIQUE", "SITE_WEB", "BOUCHE_A_OREILLE"];
+      const clientSource = validClientSources.includes(source) ? source : "SITE_WEB";
       if (!dbClient) {
         dbClient = await tx.client.create({
           data: {
@@ -148,7 +153,7 @@ export async function POST(request: NextRequest) {
             email: client.email || null,
             adresse: adresse || null,
             ville: ville || null,
-            source: clientSource as "INSTAGRAM" | "WHATSAPP" | "BOUCHE_A_OREILLE" | "BOUTIQUE" | "SITE_WEB",
+            source: clientSource as "INSTAGRAM" | "FACEBOOK" | "TIKTOK" | "WHATSAPP" | "BOUCHE_A_OREILLE" | "BOUTIQUE" | "SITE_WEB",
           },
         });
       } else {
@@ -208,6 +213,7 @@ export async function POST(request: NextRequest) {
         adresseLivraison: adresse || null,
         villeLivraison: ville || null,
         notes: notes || null,
+        createdById: createdById || null,
         lignes: { create: lignesCreate },
       };
 
