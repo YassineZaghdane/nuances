@@ -213,8 +213,8 @@ export default function HomePage() {
                 fontSize:'clamp(3.2rem,5.5vw,6.5rem)',
                 fontWeight:300, lineHeight:1.05, color:'white', marginBottom:'1.6rem'
               }}>
-                Deux univers.<br/>Une même<br/>
-                <em style={{ fontStyle:'italic', background:'linear-gradient(135deg,#C4960A,#E8C96A)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>exigence.</em>
+                Deux univers<br/>Une même<br/>
+                <em style={{ fontStyle:'italic', background:'linear-gradient(135deg,#C4960A,#E8C96A)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>exigence</em>
               </h1>
             </Reveal>
 
@@ -299,7 +299,7 @@ export default function HomePage() {
           <Reveal>
             <div style={{ textAlign:'center', marginBottom:'4.5rem' }}>
               <span style={{ fontSize:'0.65rem', letterSpacing:'0.38em', textTransform:'uppercase', color:'#C4960A', display:'block', marginBottom:'1.2rem' }}>Notre Signature</span>
-              <h2 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'clamp(2.2rem,4vw,4.5rem)', fontWeight:300, color:'#1A1208', lineHeight:1.1 }}>Deux univers.<br/>Une même exigence.</h2>
+              <h2 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'clamp(2.2rem,4vw,4.5rem)', fontWeight:300, color:'#1A1208', lineHeight:1.1 }}>Deux univers<br/>Une même exigence</h2>
             </div>
           </Reveal>
 
