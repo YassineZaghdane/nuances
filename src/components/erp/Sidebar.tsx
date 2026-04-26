@@ -34,6 +34,13 @@ const MENU_COMPLET: MenuSection[] = [
     ],
   },
   {
+    section: "Catalogue",
+    items: [
+      { href: "/erp/categories", label: "Catégories", icon: "▪" },
+      { href: "/erp/marques", label: "Marques", icon: "▪" },
+    ],
+  },
+  {
     section: "Finance",
     items: [
       // { href: '/erp/finances',          label: 'Finances',    icon: '▪' },

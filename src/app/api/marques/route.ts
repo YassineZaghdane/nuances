@@ -11,26 +11,26 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
-  const categories = await prisma.categorie.findMany({
-    select: { id: true, nom: true, slug: true, _count: { select: { produits: true } } },
+  const marques = await prisma.marque.findMany({
+    select: { id: true, nom: true, slug: true, description: true, _count: { select: { produits: true } } },
     orderBy: { nom: "asc" },
   });
 
-  return NextResponse.json(categories);
+  return NextResponse.json(marques);
 }
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
 
-  const { nom } = await req.json();
+  const { nom, description } = await req.json();
   if (!nom?.trim()) return NextResponse.json({ error: "Nom requis" }, { status: 400 });
 
   try {
-    const categorie = await prisma.categorie.create({
-      data: { nom: nom.trim(), slug: toSlug(nom.trim()) },
+    const marque = await prisma.marque.create({
+      data: { nom: nom.trim(), slug: toSlug(nom.trim()), description: description?.trim() || null },
     });
-    return NextResponse.json(categorie, { status: 201 });
+    return NextResponse.json(marque, { status: 201 });
   } catch (e: any) {
     if (e.code === 'P2002') return NextResponse.json({ error: "Ce nom existe déjà" }, { status: 409 });
     throw e;

@@ -18,23 +18,29 @@ const NO_STORE = {
 } as const;
 
 const produitPostSchema = z.object({
-  nom:         z.string().min(2).max(100),
-  slug:        z.string().min(2).max(100).regex(/^[a-z0-9-]+$/).optional(),
-  prix:        z.number().positive().max(99999),
-  prixAchat:   z.number().nonnegative().max(99999).optional().nullable(),
-  prix30ml:    z.number().nonnegative().max(99999).optional().nullable(),
-  prix50ml:    z.number().nonnegative().max(99999).optional().nullable(),
-  prix100ml:   z.number().nonnegative().max(99999).optional().nullable(),
+  nom: z.string().min(2).max(100),
+  slug: z
+    .string()
+    .min(2)
+    .max(100)
+    .regex(/^[a-z0-9-]+$/)
+    .optional(),
+  prix: z.number().positive().max(99999).optional(),
+  prixAchat: z.number().nonnegative().max(99999).optional().nullable(),
+  prix30ml: z.number().nonnegative().max(99999).optional().nullable(),
+  prix50ml: z.number().nonnegative().max(99999).optional().nullable(),
+  prix100ml: z.number().nonnegative().max(99999).optional().nullable(),
   categorieId: z.string().min(1).max(100),
+  marqueId: z.string().optional().nullable(),
   description: z.string().max(1000).optional().nullable(),
-  notes:       z.string().max(500).optional().nullable(),
-  images:      z.array(z.string().min(1)).max(5).optional().default([]),
-  actif:       z.boolean().optional().default(true),
-  featured:    z.boolean().optional().default(false),
-  exclusif:    z.boolean().optional().default(false),
-  nouveaute:   z.boolean().optional().default(false),
-  offre:       z.boolean().optional().default(false),
-  offreLabel:  z.string().max(100).optional().nullable(),
+  notes: z.string().max(500).optional().nullable(),
+  images: z.array(z.string().min(1)).max(5).optional().default([]),
+  actif: z.boolean().optional().default(true),
+  featured: z.boolean().optional().default(false),
+  exclusif: z.boolean().optional().default(false),
+  nouveaute: z.boolean().optional().default(false),
+  offre: z.boolean().optional().default(false),
+  offreLabel: z.string().max(100).optional().nullable(),
 });
 
 export async function GET(req: Request) {
@@ -48,6 +54,7 @@ export async function GET(req: Request) {
     const actif = searchParams.get("actif");
     const search = searchParams.get("search") || searchParams.get("q");
     const categorieId = searchParams.get("categorieId");
+    const marqueId = searchParams.get("marqueId");
     const include = searchParams.get("include") || "";
 
     const where: Prisma.ProduitWhereInput = {};
@@ -58,6 +65,7 @@ export async function GET(req: Request) {
     if (nouveaute === "true") where.nouveaute = true;
     if (offre === "true") where.offre = true;
     if (categorieId) where.categorieId = categorieId;
+    if (marqueId) where.marqueId = marqueId;
     if (search) {
       where.OR = [
         { nom: { contains: search, mode: "insensitive" } },
@@ -91,6 +99,7 @@ export async function GET(req: Request) {
         offre: true,
         offreLabel: true,
         categorie: { select: { id: true, nom: true, slug: true } },
+        marque: { select: { id: true, nom: true, slug: true } },
         stockKilo: { select: { stockMlTotal: true, stockKgTotal: true } },
       },
       orderBy: [
@@ -115,7 +124,7 @@ export async function GET(req: Request) {
     console.error("[GET /api/produits]", error);
     return NextResponse.json(
       { error: "Erreur serveur" },
-      { status: 500, headers: NO_STORE }
+      { status: 500, headers: NO_STORE },
     );
   }
 }
@@ -136,7 +145,7 @@ export async function POST(req: Request) {
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Données invalides", details: parsed.error.flatten() },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const {
@@ -151,6 +160,7 @@ export async function POST(req: Request) {
       prix100ml,
       images,
       categorieId,
+      marqueId,
       actif,
       featured,
       exclusif,
@@ -174,6 +184,7 @@ export async function POST(req: Request) {
         prix100ml: prix100ml ?? null,
         images: images || [],
         categorieId,
+        marqueId: marqueId ?? null,
         actif: actif ?? true,
         featured: featured ?? false,
         exclusif: exclusif ?? false,
@@ -183,6 +194,7 @@ export async function POST(req: Request) {
       },
       include: {
         categorie: true,
+        marque: true,
         stocks: true,
       },
     });
@@ -193,7 +205,7 @@ export async function POST(req: Request) {
         prix: Number(produit.prix),
         prixAchat: produit.prixAchat ? Number(produit.prixAchat) : null,
       },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error: unknown) {
     const err = error as Error & { code?: string };
@@ -202,7 +214,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Slug déjà utilisé" }, { status: 409 });
     }
     if (err.code === "P2025") {
-      return NextResponse.json({ error: "Catégorie introuvable" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Catégorie introuvable" },
+        { status: 404 },
+      );
     }
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }

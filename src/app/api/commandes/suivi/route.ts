@@ -5,6 +5,8 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+const CANCELLABLE = ["EN_ATTENTE", "CONFIRMEE"] as const;
+
 export const dynamic = "force-dynamic";
 
 const COMMANDE_SELECT = {
@@ -73,6 +75,56 @@ export async function GET(req: Request) {
   } catch (error: unknown) {
     const err = error as Error;
     console.error("[GET /api/commandes/suivi]", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const { id } = await req.json();
+    if (!id) return NextResponse.json({ error: "Paramètre requis: id" }, { status: 400 });
+
+    const commande = await prisma.commande.findUnique({
+      where: { id },
+      include: { lignes: true },
+    });
+
+    if (!commande) return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
+
+    if (!CANCELLABLE.includes(commande.statut as typeof CANCELLABLE[number])) {
+      return NextResponse.json(
+        { error: "Cette commande ne peut plus être annulée" },
+        { status: 409 }
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Restore stock for each order line
+      for (const ligne of commande.lignes) {
+        await tx.stock.updateMany({
+          where: { produitId: ligne.produitId, taille: ligne.taille },
+          data: { quantite: { increment: ligne.quantite } },
+        });
+        await tx.mouvementStock.create({
+          data: {
+            produitId: ligne.produitId,
+            taille: ligne.taille,
+            type: "ENTREE",
+            quantite: ligne.quantite,
+            raison: `Annulation client — commande ${commande.numero}`,
+          },
+        });
+      }
+      await tx.commande.update({
+        where: { id },
+        data: { statut: "ANNULEE" },
+      });
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("[POST /api/commandes/suivi]", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

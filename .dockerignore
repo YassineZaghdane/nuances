@@ -1,0 +1,16 @@
+.git
+.gitignore
+.env
+.env.local
+.next
+node_modules
+npm-debug.log*
+README.md
+docs/
+__tests__/
+*.test.ts
+*.test.tsx
+.claude/
+.vscode/
+prisma/migrations/
+public/images/produits/*

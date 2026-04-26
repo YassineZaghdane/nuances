@@ -3,17 +3,18 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface Categorie { id: string; nom: string }
+interface Marque { id: string; nom: string }
 
 interface Props {
   produit?: {
     id: string; nom: string; slug: string
     description?: string; notes?: string
-    prix: number; prixAchat?: number
     prix30ml?: number | null; prix50ml?: number | null; prix100ml?: number | null
     images: string[]; actif: boolean; featured: boolean
     exclusif: boolean; nouveaute: boolean
     offre: boolean; offreLabel?: string
     categorieId?: string
+    marqueId?: string | null
     stockKilo?: { stockMlTotal: number }
   }
   mode: 'creation' | 'edition'
@@ -45,6 +46,7 @@ const labelStyle = {
 export function ProduitForm({ produit, mode }: Props) {
   const router = useRouter()
   const [categories, setCategories] = useState<Categorie[]>([])
+  const [marques, setMarques] = useState<Marque[]>([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
@@ -56,8 +58,6 @@ export function ProduitForm({ produit, mode }: Props) {
     slug:        produit?.slug        || '',
     description: produit?.description || '',
     notes:       produit?.notes       || '',
-    prix:        produit?.prix        || 0,
-    prixAchat:   produit?.prixAchat   || 0,
     images:      produit?.images      || [] as string[],
     actif:       produit?.actif       ?? true,
     featured:    produit?.featured    ?? false,
@@ -66,6 +66,7 @@ export function ProduitForm({ produit, mode }: Props) {
     offre:       produit?.offre       ?? false,
     offreLabel:  produit?.offreLabel  || '',
     categorieId: produit?.categorieId || '',
+    marqueId:    produit?.marqueId   || '',
     prix30ml:    produit?.prix30ml  ?? 0,
     prix50ml:    produit?.prix50ml  ?? 0,
     prix100ml:   produit?.prix100ml ?? 0,
@@ -76,6 +77,10 @@ export function ProduitForm({ produit, mode }: Props) {
     fetch('/api/categories')
       .then(r => r.json())
       .then(d => setCategories(Array.isArray(d) ? d : []))
+      .catch(() => {})
+    fetch('/api/marques')
+      .then(r => r.json())
+      .then(d => setMarques(Array.isArray(d) ? d : []))
       .catch(() => {})
   }, [])
 
@@ -133,8 +138,8 @@ export function ProduitForm({ produit, mode }: Props) {
     set('images', form.images.filter((_: string, j: number) => j !== i))
 
   const handleSubmit = async () => {
-    if (!form.nom || !form.prix || !form.categorieId) {
-      setError('Nom, prix et catégorie sont obligatoires.')
+    if (!form.nom || !form.categorieId) {
+      setError('Nom et catégorie sont obligatoires.')
       return
     }
     setSaving(true)
@@ -151,11 +156,10 @@ export function ProduitForm({ produit, mode }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
-          prix:      Number(form.prix),
-          prixAchat: form.prixAchat ? Number(form.prixAchat) : undefined,
           prix30ml:  form.prix30ml  ? Number(form.prix30ml)  : null,
           prix50ml:  form.prix50ml  ? Number(form.prix50ml)  : null,
           prix100ml: form.prix100ml ? Number(form.prix100ml) : null,
+          marqueId:  form.marqueId  || null,
           stockMlInitial: undefined,
         }),
       })
@@ -264,46 +268,32 @@ export function ProduitForm({ produit, mode }: Props) {
             </div>
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={labelStyle}>Catégorie *</label>
-            <select
-              style={{ ...inputStyle, cursor: 'pointer' }}
-              value={form.categorieId}
-              onChange={e => set('categorieId', e.target.value)}
-            >
-              <option value="">Sélectionner une catégorie</option>
-              {categories.map(c => (
-                <option key={c.id} value={c.id}>{c.nom}</option>
-              ))}
-            </select>
-          </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
             <div>
-              <label style={labelStyle}>Prix de vente (DT) *</label>
-              <input
-                style={inputStyle}
-                type="number"
-                min="0"
-                step="0.5"
-                value={form.prix}
-                onChange={e => set('prix', e.target.value)}
-                onFocus={e => (e.target as HTMLInputElement).style.borderColor = '#C4960A'}
-                onBlur={e => (e.target as HTMLInputElement).style.borderColor = '#EDE5D4'}
-              />
+              <label style={labelStyle}>Catégorie *</label>
+              <select
+                style={{ ...inputStyle, cursor: 'pointer' }}
+                value={form.categorieId}
+                onChange={e => set('categorieId', e.target.value)}
+              >
+                <option value="">Sélectionner une catégorie</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.nom}</option>
+                ))}
+              </select>
             </div>
             <div>
-              <label style={labelStyle}>Prix d'achat (DT)</label>
-              <input
-                style={inputStyle}
-                type="number"
-                min="0"
-                step="0.5"
-                value={form.prixAchat}
-                onChange={e => set('prixAchat', e.target.value)}
-                onFocus={e => (e.target as HTMLInputElement).style.borderColor = '#C4960A'}
-                onBlur={e => (e.target as HTMLInputElement).style.borderColor = '#EDE5D4'}
-              />
+              <label style={labelStyle}>Marque</label>
+              <select
+                style={{ ...inputStyle, cursor: 'pointer' }}
+                value={form.marqueId}
+                onChange={e => set('marqueId', e.target.value)}
+              >
+                <option value="">Aucune marque</option>
+                {marques.map(m => (
+                  <option key={m.id} value={m.id}>{m.nom}</option>
+                ))}
+              </select>
             </div>
           </div>
 

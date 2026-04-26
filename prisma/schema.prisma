@@ -37,27 +37,38 @@ model Categorie {
   produits Produit[]
 }
 
+// ─── MARQUES ────────────────────────────────────
+model Marque {
+  id          String    @id @default(cuid())
+  nom         String    @unique
+  slug        String    @unique
+  description String?
+  produits    Produit[]
+}
+
 // ─── PRODUITS ───────────────────────────────────
 model Produit {
-  id             String           @id @default(cuid())
+  id             String          @id @default(cuid())
   nom            String
-  slug           String           @unique
+  slug           String          @unique
   description    String?
   notes          String?
-  prix           Decimal          @db.Decimal(10, 3)
-  prixAchat      Decimal?         @db.Decimal(10, 3)
-  prix30ml       Decimal?         @db.Decimal(10, 3)
-  prix50ml       Decimal?         @db.Decimal(10, 3)
-  prix100ml      Decimal?         @db.Decimal(10, 3)
+  prix           Decimal?        @db.Decimal(10, 3)
+  prixAchat      Decimal?        @db.Decimal(10, 3)
+  prix30ml       Decimal?        @db.Decimal(10, 3)
+  prix50ml       Decimal?        @db.Decimal(10, 3)
+  prix100ml      Decimal?        @db.Decimal(10, 3)
   images         String[]
-  actif          Boolean          @default(true)
-  featured       Boolean          @default(false)
-  exclusif       Boolean          @default(false)
-  nouveaute      Boolean          @default(false)
-  offre          Boolean          @default(false)
+  actif          Boolean         @default(true)
+  featured       Boolean         @default(false)
+  exclusif       Boolean         @default(false)
+  nouveaute      Boolean         @default(false)
+  offre          Boolean         @default(false)
   offreLabel     String?
   categorieId    String
-  categorie      Categorie        @relation(fields: [categorieId], references: [id])
+  categorie      Categorie       @relation(fields: [categorieId], references: [id])
+  marqueId       String?
+  marque         Marque?         @relation(fields: [marqueId], references: [id])
   stocks         Stock[]
   stockKilo      StockKilo?
   lignesCommande LigneCommande[]
@@ -67,15 +78,15 @@ model Produit {
 
 // ─── STOCK ──────────────────────────────────────
 model Stock {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   produitId   String
-  produit     Produit   @relation(fields: [produitId], references: [id])
-  taille      String    // "30ml", "50ml", "100ml"
-  volumeMl    Float     @default(0) // volume en ml de ce format (30, 50, 100...)
-  quantite    Int       @default(0) // nb de flacons en stock
-  seuilAlerte Int       @default(5)
-  prixVente   Decimal?  @db.Decimal(10, 3)
-  updatedAt   DateTime  @updatedAt
+  produit     Produit  @relation(fields: [produitId], references: [id])
+  taille      String // "30ml", "50ml", "100ml"
+  volumeMl    Float    @default(0) // volume en ml de ce format (30, 50, 100...)
+  quantite    Int      @default(0) // nb de flacons en stock
+  seuilAlerte Int      @default(5)
+  prixVente   Decimal? @db.Decimal(10, 3)
+  updatedAt   DateTime @updatedAt
 
   @@unique([produitId, taille])
 }
@@ -90,16 +101,16 @@ model StockKilo {
 }
 
 model MouvementStock {
-  id          String         @id @default(cuid())
-  produitId   String
-  taille      String
-  volumeMl    Float          @default(0) // ml consommés/ajoutés
-  type        TypeMouvement
-  quantite    Int
-  raison      String?
-  userId      String?
-  commandeId  String?
-  createdAt   DateTime       @default(now())
+  id         String        @id @default(cuid())
+  produitId  String
+  taille     String
+  volumeMl   Float         @default(0) // ml consommés/ajoutés
+  type       TypeMouvement
+  quantite   Int
+  raison     String?
+  userId     String?
+  commandeId String?
+  createdAt  DateTime      @default(now())
 }
 
 enum TypeMouvement {
@@ -110,17 +121,17 @@ enum TypeMouvement {
 
 // ─── CLIENTS ────────────────────────────────────
 model Client {
-  id        String    @id @default(cuid())
+  id        String     @id @default(cuid())
   nom       String
-  telephone String    @unique
+  telephone String     @unique
   email     String?
   adresse   String?
   ville     String?
-  source    Source    @default(INSTAGRAM)
+  source    Source     @default(INSTAGRAM)
   notes     String?
   commandes Commande[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 enum Source {
@@ -135,26 +146,26 @@ enum Source {
 
 // ─── COMMANDES ──────────────────────────────────
 model Commande {
-  id               String           @id @default(cuid())
-  numero           String           @unique
+  id               String          @id @default(cuid())
+  numero           String          @unique
   clientId         String
-  client           Client           @relation(fields: [clientId], references: [id])
+  client           Client          @relation(fields: [clientId], references: [id])
   lignes           LigneCommande[]
-  statut           StatutCommande   @default(EN_ATTENTE)
-  modePaiement     String           @default("PAIEMENT_LIVRAISON")
-  statutPaiement   StatutPaiement   @default(EN_ATTENTE)
-  montantTotal     Decimal          @db.Decimal(10, 3)
-  fraisLivraison   Decimal          @default(0) @db.Decimal(10, 3)
+  statut           StatutCommande  @default(EN_ATTENTE)
+  modePaiement     String          @default("PAIEMENT_LIVRAISON")
+  statutPaiement   StatutPaiement  @default(EN_ATTENTE)
+  montantTotal     Decimal         @db.Decimal(10, 3)
+  fraisLivraison   Decimal         @default(0) @db.Decimal(10, 3)
   adresseLivraison String?
   villeLivraison   String?
   notes            String?
-  source           String           @default("SITE_WEB")
+  source           String          @default("SITE_WEB")
   createdById      String?
-  createdBy        User?            @relation(fields: [createdById], references: [id])
+  createdBy        User?           @relation(fields: [createdById], references: [id])
   livraison        Livraison?
   facture          Facture?
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 }
 
 model LigneCommande {
@@ -235,7 +246,7 @@ model MatierePremiere {
   nom         String             @unique
   description String?
   stockMl     Float              @default(0)
-  unite       String             @default("ml")  // "ml" ou "unité"
+  unite       String             @default("ml") // "ml" ou "unité"
   seuilAlerte Float              @default(500)
   isDefault   Boolean            @default(false) // alcool + flacons par défaut
   mouvements  MouvementMatiere[]

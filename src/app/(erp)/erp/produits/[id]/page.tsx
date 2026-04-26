@@ -30,6 +30,7 @@ export default async function ErpProduitDetailPage({ params }: { params: Promise
     offre: produit.offre,
     offreLabel: produit.offreLabel ?? undefined,
     categorieId: produit.categorieId,
+    marqueId: produit.marqueId ?? null,
     stockKilo: produit.stockKilo
       ? { stockMlTotal: produit.stockKilo.stockMlTotal }
       : undefined,

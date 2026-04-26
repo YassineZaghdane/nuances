@@ -91,7 +91,7 @@ export async function PATCH(req: Request, { params }: Params) {
     const {
       nom, slug, description, notes, prix, prixAchat,
       prix30ml, prix50ml, prix100ml,
-      images, categorieId, actif, featured, exclusif, nouveaute, offre, offreLabel,
+      images, categorieId, marqueId, actif, featured, exclusif, nouveaute, offre, offreLabel,
     } = body;
 
     const data: Prisma.ProduitUpdateInput = {};
@@ -114,11 +114,14 @@ export async function PATCH(req: Request, { params }: Params) {
     if (categorieId !== undefined) {
       data.categorie = { connect: { id: categorieId } };
     }
+    if (marqueId !== undefined) {
+      data.marque = marqueId ? { connect: { id: marqueId } } : { disconnect: true };
+    }
 
     const updated = await prisma.produit.update({
       where: { id: produit.id },
       data,
-      include: { categorie: true, stockKilo: true },
+      include: { categorie: true, marque: true, stockKilo: true },
     });
 
     return NextResponse.json({

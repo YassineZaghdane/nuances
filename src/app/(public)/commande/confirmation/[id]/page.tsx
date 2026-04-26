@@ -36,6 +36,8 @@ export default function ConfirmationIdPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState('')
 
   const load = async (silent = false) => {
     if (!silent) setLoading(true)
@@ -55,6 +57,28 @@ export default function ConfirmationIdPage() {
   }
 
   useEffect(() => { load() }, [id])
+
+  const handleCancel = async () => {
+    if (!confirm('Êtes-vous sûr de vouloir annuler cette commande ? Cette action est irréversible.')) return
+    setCancelling(true)
+    setCancelError('')
+    try {
+      const res = await fetch('/api/commandes/suivi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur')
+      await load(true)
+    } catch (e: unknown) {
+      setCancelError(e instanceof Error ? e.message : 'Une erreur est survenue.')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  const canCancel = commande && ['EN_ATTENTE', 'CONFIRMEE'].includes(commande.statut)
 
   const currentStepIdx = commande
     ? STATUT_STEPS.findIndex(s => s.key === commande.statut)
@@ -198,12 +222,12 @@ export default function ConfirmationIdPage() {
         )}
 
         {/* Actions */}
-        <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
           <button
             onClick={() => load(true)}
             disabled={refreshing}
             style={{
-              flex: '1 1 160px', padding: '0.85rem 1.2rem',
+              flex: '1 1 140px', padding: '0.85rem 1.2rem',
               background: 'white', color: '#1A1208',
               border: '1px solid #EDE5D4', cursor: refreshing ? 'not-allowed' : 'pointer',
               fontFamily: 'Jost, sans-serif', fontSize: '0.75rem',
@@ -219,7 +243,7 @@ export default function ConfirmationIdPage() {
             target="_blank"
             rel="noopener noreferrer"
             style={{
-              flex: '1 1 160px', padding: '0.85rem 1.2rem',
+              flex: '1 1 140px', padding: '0.85rem 1.2rem',
               background: '#25D366', color: 'white',
               textDecoration: 'none', display: 'flex', alignItems: 'center',
               justifyContent: 'center', gap: '0.5rem',
@@ -231,6 +255,38 @@ export default function ConfirmationIdPage() {
             💬 WhatsApp
           </a>
         </div>
+
+        {/* Cancel */}
+        {canCancel && (
+          <div style={{ marginBottom: '1.5rem' }}>
+            {cancelError && (
+              <div style={{ background: '#FAEAEA', border: '1px solid rgba(139,58,58,0.2)', color: '#8B3A3A', padding: '0.7rem 1rem', fontSize: '0.78rem', borderRadius: '3px', marginBottom: '0.75rem' }}>
+                {cancelError}
+              </div>
+            )}
+            <button
+              onClick={handleCancel}
+              disabled={cancelling}
+              style={{
+                width: '100%', padding: '0.85rem 1.2rem',
+                background: 'transparent', color: '#8B3A3A',
+                border: '1px solid rgba(139,58,58,0.3)',
+                cursor: cancelling ? 'not-allowed' : 'pointer',
+                fontFamily: 'Jost, sans-serif', fontSize: '0.75rem',
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                borderRadius: '3px', transition: 'all 0.2s',
+                opacity: cancelling ? 0.6 : 1,
+              }}
+              onMouseEnter={e => { if (!cancelling) { (e.currentTarget as HTMLButtonElement).style.background = '#FAEAEA' } }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
+            >
+              {cancelling ? 'Annulation en cours…' : '✕ Annuler ma commande'}
+            </button>
+            <p style={{ fontSize: '0.68rem', color: '#C4B090', textAlign: 'center', marginTop: '0.5rem', fontStyle: 'italic' }}>
+              Possible uniquement avant la mise en préparation
+            </p>
+          </div>
+        )}
 
         <div style={{ textAlign: 'center' }}>
           <Link href="/boutique" style={{ fontSize: '0.75rem', color: '#C4B090', textDecoration: 'none', letterSpacing: '0.08em' }}>
