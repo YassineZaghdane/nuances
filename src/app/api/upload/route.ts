@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
+import { join, resolve } from "path";
 import { randomUUID } from "crypto";
+
+function uploadsRoot() {
+  return process.env.UPLOADS_DIR ?? join(process.cwd(), "..", "uploads", "nuances");
+}
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -30,13 +34,20 @@ export async function POST(req: Request) {
     const ext = file.type.split("/")[1].replace("jpeg", "jpg");
     const filename = `${randomUUID()}.${ext}`;
 
-    const uploadsDir = join(process.cwd(), "public", "images", "produits");
+    const uploadsDir = join(uploadsRoot(), "produits");
+
+    // Guard against path traversal
+    const resolved = resolve(uploadsDir);
+    if (!resolved.startsWith(resolve(uploadsRoot()))) {
+      return NextResponse.json({ error: "Chemin invalide" }, { status: 400 });
+    }
+
     await mkdir(uploadsDir, { recursive: true });
 
     const bytes = await file.arrayBuffer();
     await writeFile(join(uploadsDir, filename), Buffer.from(bytes));
 
-    return NextResponse.json({ url: `/images/produits/${filename}` });
+    return NextResponse.json({ url: `/api/images/produits/${filename}` });
   } catch (error) {
     console.error("[POST /api/upload]", error);
     return NextResponse.json({ error: "Erreur lors de l'upload" }, { status: 500 });
