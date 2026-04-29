@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ErpPage, ErpTable, StatutBadge, BtnPrimary } from '@/components/erp/ErpPage'
+import { ErpPage, ErpTable, StatutBadge } from '@/components/erp/ErpPage'
 
 const STATUTS = [
   { val: 'Tous',           label: 'Tous' },
@@ -89,14 +89,11 @@ export default function CommandesPage() {
               background: '#FDFAF5',
               color: '#1A1208',
               outline: 'none',
-              width: '200px',
+              width: 'min(200px, 100%)',
               fontFamily: 'Jost,sans-serif',
               borderRadius: '3px',
             }}
           />
-          <BtnPrimary href="/erp/commandes/nouveau">
-            + Nouvelle
-          </BtnPrimary>
         </>
       }
     >

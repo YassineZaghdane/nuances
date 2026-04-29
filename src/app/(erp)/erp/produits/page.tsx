@@ -135,7 +135,8 @@ export default function ErpProduitsPage() {
       }
     >
       <div style={{ background: "#FDFAF5", border: "1px solid #EDE5D4", borderRadius: "6px", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem", textAlign: "left" }}>
+        <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", minWidth: "760px", borderCollapse: "collapse", fontSize: "0.875rem", textAlign: "left" }}>
           <thead>
             <tr style={{ background: "#FAF7F2", borderBottom: "1px solid #EDE5D4" }}>
               <th style={{ padding: "0.75rem" }}>
@@ -182,6 +183,7 @@ export default function ErpProduitsPage() {
             })}
           </tbody>
         </table>
+        </div>
         <div style={{ padding: '0.9rem 1.5rem', borderTop: '1px solid #EDE5D4' }}>
           <ErpPagination page={page} total={filtered.length} perPage={PER} onPage={setPage} />
         </div>

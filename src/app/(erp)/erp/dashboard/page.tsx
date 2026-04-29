@@ -156,7 +156,7 @@ export default async function DashboardPage() {
     <div style={{ fontFamily:'Jost,sans-serif', minHeight:'100vh', background:'#F8F5F0' }}>
 
       {/* TOPBAR */}
-      <div style={{
+      <div className="erp-topbar" style={{
         height:'60px', background:'#FDFAF5',
         borderBottom:'1px solid #EDE5D4',
         display:'flex', alignItems:'center',
@@ -194,10 +194,10 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div style={{ padding:'2rem' }}>
+      <div className="erp-dashboard-content" style={{ padding:'2rem' }}>
 
         {/* KPI CARDS */}
-        <div style={{
+        <div className="erp-kpi-grid" style={{
           display:'grid', gridTemplateColumns:'repeat(5,1fr)',
           gap:'1rem', marginBottom:'1.5rem',
         }}>
@@ -240,7 +240,7 @@ export default async function DashboardPage() {
               Total : {ca.toFixed(0)} DT
             </span>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)' }}>
+          <div className="erp-channels-grid" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)' }}>
             {canaux.map((canal, i) => {
               const pct = ca > 0 ? (canal.ca / ca) * 100 : 0
               return (
@@ -269,15 +269,16 @@ export default async function DashboardPage() {
         </div>
 
         {/* GRILLE PRINCIPALE */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:'1rem', alignItems:'start' }}>
+        <div className="erp-main-grid" style={{ display:'grid', gridTemplateColumns:'1fr 320px', gap:'1rem', alignItems:'start' }}>
 
           {/* DERNIÈRES COMMANDES */}
-          <div style={{ background:'#FDFAF5', border:'1px solid #EDE5D4', borderRadius:'6px', overflow:'hidden' }}>
+          <div className="erp-orders-card" style={{ background:'#FDFAF5', border:'1px solid #EDE5D4', borderRadius:'6px', overflow:'hidden' }}>
             <div style={{ padding:'1rem 1.5rem', borderBottom:'1px solid #EDE5D4', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
               <span style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.05rem', color:'#1A1208' }}>Dernières commandes</span>
               <Link href="/erp/commandes" style={{ fontSize:'0.68rem', color:'#C4960A', textDecoration:'none' }}>Voir tout →</Link>
             </div>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+            <div className="erp-orders-table-wrap" style={{ overflowX: 'auto' }}>
+              <table style={{ width:'100%', minWidth:'720px', borderCollapse:'collapse' }}>
               <thead>
                 <tr style={{ background:'#FAF7F2' }}>
                   {['Commande','Client','Articles','Montant','Statut','Date'].map(h => (
@@ -318,7 +319,8 @@ export default async function DashboardPage() {
                   )
                 })}
               </tbody>
-            </table>
+              </table>
+            </div>
           </div>
 
           {/* COLONNE DROITE */}
@@ -354,7 +356,6 @@ export default async function DashboardPage() {
                   { href:'/erp/commandes',       label:'Gérer les commandes',  sub:`${d.cmdAttente} en attente` },
                   { href:'/erp/vente-place',      label:'Vente sur place',      sub:`${nbBoutique} cmd · ${caBoutique.toFixed(0)} DT ce mois` },
                   { href:'/erp/stock',            label:'Contrôle du stock',    sub:`${d.alertes} alertes` },
-                  { href:'/erp/stock/volumetrie', label:'Stock kg / ml',        sub:'Analyse volumétrique' },
                   { href:'/erp/clients',          label:'Base clients',         sub:`${d.clients} clients` },
                   { href:'/erp/finances',         label:'Finances',             sub:`${ca.toFixed(0)} DT ce mois` },
                 ].map(item => (
@@ -374,6 +375,34 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+      <style>{`
+        @media (max-width: 1100px) {
+          .erp-kpi-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          .erp-channels-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+          .erp-main-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 700px) {
+          .erp-dashboard-content {
+            padding: 1rem !important;
+          }
+          .erp-topbar {
+            height: auto !important;
+            padding: 0.8rem 1rem !important;
+            flex-wrap: wrap !important;
+            gap: 0.6rem;
+          }
+          .erp-kpi-grid,
+          .erp-channels-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

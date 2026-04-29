@@ -4,11 +4,17 @@ import { useState, useRef, useEffect } from 'react'
 interface Message {
   role: 'user' | 'assistant'
   content: string
+  options?: Array<{ label: string; value: string }>
+  ctas?: Array<{ label: string; href: string }>
 }
 
 const INITIAL: Message = {
   role: 'assistant',
   content: 'Bonjour ! Je suis Nour, votre conseillère parfum ✿\n\nJe suis là pour vous aider à trouver votre fragrance idéale.\n\nCherchez-vous un parfum pour vous-même ou souhaitez-vous offrir un cadeau ?',
+  options: [
+    { label: 'Pour moi', value: 'pour moi meme' },
+    { label: 'Pour un cadeau', value: 'pour un cadeau' },
+  ],
 }
 
 export function ChatbotWidget() {
@@ -28,8 +34,8 @@ export function ChatbotWidget() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
-  const send = async () => {
-    const text = input.trim()
+  const send = async (forcedText?: string) => {
+    const text = (forcedText ?? input).trim()
     if (!text || loading) return
 
     const userMsg: Message = { role: 'user', content: text }
@@ -48,6 +54,8 @@ export function ChatbotWidget() {
       setMessages(prev => [...prev, {
         role:    'assistant',
         content: data.message || 'Désolée, réessayez.',
+        options: Array.isArray(data.options) ? data.options : undefined,
+        ctas: Array.isArray(data.ctas) ? data.ctas : undefined,
       }])
     } catch {
       setMessages(prev => [...prev, {
@@ -204,6 +212,50 @@ export function ChatbotWidget() {
                   whiteSpace: 'pre-wrap',
                   boxShadow: '0 1px 4px rgba(26,18,8,0.05)',
                 }}>{m.content}</div>
+                {m.role === 'assistant' && m.options && m.options.length > 0 && (
+                  <div style={{ maxWidth: '78%', marginTop: '0.4rem', display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                    {m.options.map((opt, idx) => (
+                      <button
+                        key={`${opt.value}-${idx}`}
+                        type="button"
+                        onClick={() => send(opt.value)}
+                        disabled={loading}
+                        style={{
+                          border: '1px solid rgba(196,150,10,0.25)',
+                          background: '#fff',
+                          color: '#1A1208',
+                          padding: '0.28rem 0.5rem',
+                          fontSize: '0.67rem',
+                          cursor: 'pointer',
+                          borderRadius: '999px',
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {m.role === 'assistant' && m.ctas && m.ctas.length > 0 && (
+                  <div style={{ maxWidth: '78%', marginTop: '0.45rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    {m.ctas.map((cta, idx) => (
+                      <a
+                        key={`${cta.href}-${idx}`}
+                        href={cta.href}
+                        style={{
+                          background: 'linear-gradient(135deg,#C4960A,#A07808)',
+                          color: 'white',
+                          textDecoration: 'none',
+                          textAlign: 'center',
+                          padding: '0.45rem 0.6rem',
+                          fontSize: '0.68rem',
+                          letterSpacing: '0.03em',
+                        }}
+                      >
+                        {cta.label}
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
 

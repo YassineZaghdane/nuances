@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 
-const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP || '21612345678'
+const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP || '21696557557'
 
 const STATUT_STEPS = [
   { key: 'EN_ATTENTE',     label: 'Commande reçue',    icon: '✓', desc: 'Votre commande est bien enregistrée' },

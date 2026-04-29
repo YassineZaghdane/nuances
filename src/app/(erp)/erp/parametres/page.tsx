@@ -1,47 +1,36 @@
-"use client"
 import { ErpPage } from '@/components/erp/ErpPage'
 import Link from 'next/link'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { redirect } from 'next/navigation'
 
-export default function ParametresPage() {
+export default async function ParametresPage() {
+  const session = await getServerSession(authOptions)
+  if (!session) redirect('/login')
+  const role = (session.user as { role?: string })?.role
+  if (role !== 'ADMIN') redirect('/erp/dashboard')
+
   return (
-    <ErpPage title="Paramètres" subtitle="Configuration du compte">
+    <ErpPage title="Paramètres" subtitle="Administration">
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: '1rem' }}>
         {[
           {
             titre: 'Compte admin',
-            desc:  'Modifier le mot de passe et les informations du compte',
+            desc:  "Modifier l'email et le mot de passe du compte administrateur",
             icon:  '👤',
-            lien:  null,
+            lien:  '/erp/parametres/admin',
           },
           {
             titre: 'Comptes utilisateurs',
-            desc:  'Gérer les accès vendeurs et employés',
+            desc:  'Créer, modifier et supprimer les vendeurs',
             icon:  '👥',
-            lien:  null,
-          },
-          {
-            titre: 'Informations boutique',
-            desc:  'Nom, adresse, WhatsApp, Instagram',
-            icon:  '🏪',
-            lien:  null,
+            lien:  '/erp/parametres/comptes',
           },
           {
             titre: 'Seuils stock',
             desc:  'Configurer les alertes de réapprovisionnement',
             icon:  '📦',
             lien:  '/erp/stock',
-          },
-          {
-            titre: 'Emails & Notifications',
-            desc:  'Configurer Resend et les alertes automatiques',
-            icon:  '📧',
-            lien:  null,
-          },
-          {
-            titre: 'Chatbot Nour',
-            desc:  'Configurer le conseiller IA (clé Anthropic)',
-            icon:  '✿',
-            lien:  null,
           },
         ].map(item => (
           <div key={item.titre} style={{
@@ -55,18 +44,10 @@ export default function ParametresPage() {
             <div style={{ fontSize: '0.75rem', color: '#8A7B68', lineHeight: 1.6, marginBottom: '1rem' }}>
               {item.desc}
             </div>
-            {item.lien ? (
-              <Link href={item.lien} style={{
-                fontSize: '0.7rem', color: '#C4960A',
-                textDecoration: 'none', letterSpacing: '0.08em',
-              }}>Accéder →</Link>
-            ) : (
-              <span style={{
-                fontSize: '0.68rem', color: '#C4B090',
-                background: '#F0EBE0', padding: '0.2rem 0.6rem',
-                borderRadius: '3px',
-              }}>Bientôt disponible</span>
-            )}
+            <Link href={item.lien} style={{
+              fontSize: '0.7rem', color: '#C4960A',
+              textDecoration: 'none', letterSpacing: '0.08em',
+            }}>Accéder →</Link>
           </div>
         ))}
       </div>

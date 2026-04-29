@@ -182,7 +182,7 @@ export default function StockPage() {
       title="Stock"
       subtitle={alertes.length > 0 ? `⚠ ${alertes.length} alerte${alertes.length > 1 ? 's' : ''}` : 'Tout est OK'}
       actions={
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <input
             placeholder="Rechercher…"
             value={search}
@@ -214,7 +214,7 @@ export default function StockPage() {
         </div>
       }
     >
-      <div style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', borderBottom: '1px solid #EDE5D4' }}>
+      <div className="stock-tabs" style={{ display: 'flex', gap: 0, marginBottom: '1.5rem', borderBottom: '1px solid #EDE5D4', overflowX: 'auto' }}>
         {[
           { key: 'parfums' as Tab, label: '💧 Parfums' },
           { key: 'matieres' as Tab, label: '🧪 Matières premières' },
@@ -316,7 +316,7 @@ export default function StockPage() {
 
           {nouvelleMatiereForm.open && (
             <div style={{ background: '#FDFAF5', border: '1px solid #EDE5D4', borderRadius: '6px', padding: '1.5rem', marginBottom: '1rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px 120px 120px', gap: '0.8rem', marginBottom: '1rem' }}>
+              <div className="stock-new-matiere-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px 120px 120px', gap: '0.8rem', marginBottom: '1rem' }}>
                 {[
                   { label: 'Nom *', key: 'nom', placeholder: 'ex: Bouchons' },
                   { label: 'Description', key: 'description', placeholder: 'optionnel' },
@@ -571,7 +571,7 @@ export default function StockPage() {
       )}
       {modal?.open && (
         <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(26,18,8,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <div style={{ background:'#FDFAF5', border:'1px solid #EDE5D4', borderRadius:'8px', padding:'2rem', width:'400px', boxShadow:'0 20px 60px rgba(26,18,8,0.2)' }}>
+          <div style={{ background:'#FDFAF5', border:'1px solid #EDE5D4', borderRadius:'8px', padding:'2rem', width:'min(400px, calc(100vw - 1.5rem))', boxShadow:'0 20px 60px rgba(26,18,8,0.2)' }}>
             <h3 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.3rem', color:'#1A1208', marginBottom:'1.5rem' }}>Mouvement de stock</h3>
             <div style={{ marginBottom:'1rem' }}>
               <div style={{ fontSize:'0.62rem', letterSpacing:'0.15em', textTransform:'uppercase', color:'#C4B090', marginBottom:'0.5rem' }}>Type</div>
@@ -598,7 +598,7 @@ export default function StockPage() {
       )}
       {kiloModal?.open && (
         <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(26,18,8,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <div style={{ background:'#FDFAF5', border:'1px solid #EDE5D4', borderRadius:'8px', padding:'2rem', width:'420px', boxShadow:'0 20px 60px rgba(26,18,8,0.2)' }}>
+          <div style={{ background:'#FDFAF5', border:'1px solid #EDE5D4', borderRadius:'8px', padding:'2rem', width:'min(420px, calc(100vw - 1.5rem))', boxShadow:'0 20px 60px rgba(26,18,8,0.2)' }}>
             <h3 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.3rem', color:'#1A1208', marginBottom:'0.4rem' }}>{kiloModal.stockKilo.produit.nom}</h3>
             <p style={{ fontSize:'0.72rem', color:'#C4B090', marginBottom:'1.5rem' }}>Stock actuel : {kiloModal.stockKilo.stockMlTotal.toLocaleString('fr-FR')} ml</p>
             <div style={{ marginBottom:'1rem' }}>
@@ -628,7 +628,7 @@ export default function StockPage() {
       )}
       {matiereModal?.open && (
         <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(26,18,8,0.5)', backdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <div style={{ background:'#FDFAF5', border:'1px solid #EDE5D4', borderRadius:'8px', padding:'2rem', width:'420px', boxShadow:'0 20px 60px rgba(26,18,8,0.2)' }}>
+          <div style={{ background:'#FDFAF5', border:'1px solid #EDE5D4', borderRadius:'8px', padding:'2rem', width:'min(420px, calc(100vw - 1.5rem))', boxShadow:'0 20px 60px rgba(26,18,8,0.2)' }}>
             <h3 style={{ fontFamily:'Cormorant Garamond,serif', fontSize:'1.3rem', color:'#1A1208', marginBottom:'0.4rem' }}>{matiereModal.matiere.nom}</h3>
             <p style={{ fontSize:'0.72rem', color:'#C4B090', marginBottom:'1.5rem' }}>
               Stock actuel : {matiereModal.matiere.stockMl.toLocaleString('fr-FR')} {matiereModal.matiere.unite || 'ml'}
@@ -665,6 +665,22 @@ export default function StockPage() {
           </div>
         </div>
       )}
+      <style>{`
+        .stock-tabs button {
+          flex-shrink: 0;
+          white-space: nowrap;
+        }
+        @media (max-width: 980px) {
+          .stock-new-matiere-grid {
+            grid-template-columns: 1fr 1fr !important;
+          }
+        }
+        @media (max-width: 700px) {
+          .stock-new-matiere-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </ErpPage>
   )
 }

@@ -23,8 +23,8 @@ export function ErpPage({
   children: React.ReactNode
 }) {
   return (
-    <div style={{ fontFamily: BASE.font, minHeight: '100vh', background: '#F8F5F0' }}>
-      <div style={{
+    <div className="erp-page" style={{ fontFamily: BASE.font, minHeight: '100vh', background: '#F8F5F0' }}>
+      <div className="erp-page-topbar" style={{
         height: '60px',
         background: BASE.topbarBg,
         borderBottom: `1px solid ${BASE.topbarBorder}`,
@@ -36,7 +36,7 @@ export function ErpPage({
         top: 0,
         zIndex: 50,
       }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+        <div className="erp-page-title-wrap" style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
           <span style={{
             fontFamily: 'Cormorant Garamond, serif',
             fontSize: '1.15rem',
@@ -51,9 +51,9 @@ export function ErpPage({
             </span>
           )}
         </div>
-        {actions != null && <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>{actions}</div>}
+        {actions != null && <div className="erp-page-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>{actions}</div>}
       </div>
-      <div style={{ padding: '2rem' }}>{children}</div>
+      <div className="erp-page-content" style={{ padding: '2rem' }}>{children}</div>
     </div>
   )
 }
@@ -68,13 +68,14 @@ export function ErpTable({
   footer?: React.ReactNode
 }) {
   return (
-    <div style={{
+    <div className="erp-table" style={{
       background: '#FDFAF5',
       border: `1px solid ${BASE.topbarBorder}`,
       borderRadius: '6px',
       overflow: 'hidden',
     }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <div className="erp-table-scroll" style={{ overflowX: 'auto' }}>
+      <table className="erp-table-inner" style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ background: '#FAF7F2' }}>
             {headers.map(h => (
@@ -95,8 +96,9 @@ export function ErpTable({
         </thead>
         <tbody>{children}</tbody>
       </table>
+      </div>
       {footer != null && (
-        <div style={{ padding: '0.9rem 1.5rem', borderTop: `1px solid ${BASE.topbarBorder}` }}>
+        <div className="erp-table-footer" style={{ padding: '0.9rem 1.5rem', borderTop: `1px solid ${BASE.topbarBorder}` }}>
           {footer}
         </div>
       )}

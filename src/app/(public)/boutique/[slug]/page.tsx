@@ -300,7 +300,7 @@ export default function FicheProduitPage() {
                 {added ? '✓ Ajouté au panier' : !dispo ? 'Rupture de stock' : `Ajouter au panier — ${(prixFinal * qte).toFixed(0)} DT`}
               </button>
               <a
-                href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP || '21612345678'}?text=${encodeURIComponent(`Bonjour, je suis intéressé(e) par ${produit.nom} (${taille}) — ${prixFinal} DT`)}`}
+                href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP || '21696557557'}?text=${encodeURIComponent(`Bonjour, je suis intéressé(e) par ${produit.nom} (${taille}) — ${prixFinal} DT`)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{ padding:'1.1rem 1.5rem', background:'none', color:'#25D366', border:'1px solid #25D366', textDecoration:'none', display:'flex', alignItems:'center', gap:'0.4rem' }}

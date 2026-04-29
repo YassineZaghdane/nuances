@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cart-store";
 
-const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP || "21612345678";
+const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP || "21696557557";
 
 const TAILLE_ML: Record<string, number> = {
   "1ml": 1, "2ml": 2, "5ml": 5, "10ml": 10,

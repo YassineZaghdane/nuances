@@ -878,7 +878,7 @@ export default function HomePage() {
                   ["📍 Google Maps", "https://www.google.com/maps/place/Nuances+Parfums/@36.4547717,10.7338328,17z/data=!3m1!4b1!4m6!3m5!1s0x130299000c2e3b5f:0x8cf69e4033a7386!8m2!3d36.4547674!4d10.7364077!16s%2Fg%2F11msf5xmmr?entry=ttu&g_ep=EgoyMDI2MDMyNC4wIKXMDSoASAFQAw%3D%3D"],
                   ["📸 Instagram", "https://www.instagram.com/nuances.parfums/"],
                   ["📘 Facebook", "https://www.facebook.com/profile.php?id=61584307961028"],
-                  ["💬 WhatsApp", "https://wa.me/21696557557"],
+                  ["💬 WhatsApp", `https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP || "21696557557"}`],
                   ["📞 +216 96 557 557", "tel:+21696557557"],
                   ["🕐 Lun–Sam 9h–18h", "#"],
                 ],

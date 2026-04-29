@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const whatsapp = process.env.NEXT_PUBLIC_WHATSAPP || "21612345678";
+const whatsapp = process.env.NEXT_PUBLIC_WHATSAPP || "21696557557";
 
 function IconMapPin() {
   return (

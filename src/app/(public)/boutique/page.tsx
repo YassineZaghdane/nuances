@@ -76,9 +76,13 @@ function BoutiquePageInner() {
     if (val) p.set(key, val); else p.delete(key);
     const qs = p.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    if (mobileOpen) setMobileOpen(false);
   };
 
-  const resetAll = () => router.push(pathname, { scroll: false });
+  const resetAll = () => {
+    router.push(pathname, { scroll: false });
+    if (mobileOpen) setMobileOpen(false);
+  };
 
   // Data
   const [produits,    setProduits]    = useState<Produit[]>([]);
@@ -285,7 +289,7 @@ function BoutiquePageInner() {
       </div>
 
       {/* ── Body ─────────────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "flex-start" }}>
+      <div className="boutique-body" style={{ display: "flex", alignItems: "flex-start" }}>
 
         {/* Sidebar — hidden on mobile unless toggled */}
         <div className={`sidebar-wrap${mobileOpen ? " sidebar-open" : ""}`}>
@@ -293,7 +297,7 @@ function BoutiquePageInner() {
         </div>
 
         {/* Products */}
-        <div style={{ flex: 1, minWidth: 0, padding: "2rem 2.5rem" }}>
+        <div className="products-wrap" style={{ flex: 1, minWidth: 0, padding: "2rem 2.5rem" }}>
 
           {/* Topbar */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
@@ -360,9 +364,30 @@ function BoutiquePageInner() {
         .sidebar-wrap { display: block; }
         .desktop-cart { display: flex !important; }
         @media (max-width: 768px) {
+          .boutique-body { display: block !important; }
+          .products-wrap { padding: 1rem 0.9rem 1.5rem !important; }
           .sidebar-wrap { display: none; }
-          .sidebar-wrap.sidebar-open { display: block; width: 100%; }
-          .sidebar-wrap.sidebar-open aside { width: 100%; height: auto; position: static; border-right: none; border-bottom: 1px solid #EDE5D4; }
+          .sidebar-wrap.sidebar-open {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 120;
+            background: rgba(253,250,245,0.98);
+            overflow-y: auto;
+            padding-top: 76px;
+          }
+          .sidebar-wrap.sidebar-open aside {
+            width: 100% !important;
+            height: auto !important;
+            min-height: calc(100vh - 76px);
+            position: static !important;
+            border-right: none !important;
+            border-bottom: 1px solid #EDE5D4;
+            padding-bottom: 1.5rem !important;
+          }
           .mobile-filter-bar { display: flex !important; }
           .desktop-cart { display: none !important; }
         }

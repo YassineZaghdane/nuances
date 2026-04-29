@@ -4,7 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 
-const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP || "21612345678";
+const WHATSAPP = process.env.NEXT_PUBLIC_WHATSAPP || "21696557557";
 
 function ConfirmationContent() {
   const params = useSearchParams();

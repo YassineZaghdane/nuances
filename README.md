@@ -143,13 +143,13 @@ Descriptions :
 | `/erp/produits` | Listing produits + suppression | ✅ complet |
 | `/erp/produits/nouveau` | Création produit | ✅ complet |
 | `/erp/produits/[id]` | Édition produit | ✅ complet |
-| `/erp/stock` | Stock (version server + actions modal) | ⚠️ partiel (double implémentation avec autre page client) |
-| `/erp/stock/volumetrie` | volumétrie ml/kg/flacons | ✅ complet |
+| `/erp/stock` | Stock (gestion opérationnelle) | ✅ complet |
+| `/erp/stock/volumetrie` | volumétrie ml/kg/flacons | 🚫 masquée (redirige vers `/erp/stock`) |
 | `/erp/exclusivites` | gestion badges offres/exclusifs | ✅ complet |
 | `/erp/livraisons` | listing livraisons | ⚠️ partiel |
 | `/erp/finances` | CA mensuel + dépenses | ✅ complet |
 | `/erp/finances/factures` | listing factures (implémentation fragile) | ⚠️ partiel |
-| `/erp/parametres` | placeholders paramètres | ❌ vide fonctionnel |
+| `/erp/parametres` | administration comptes | ✅ complet (admin only) |
 
 Notes routes ERP :
 - Beaucoup de routes dupliquées existent aussi sous `/erp/erp/...` (certaines redirigent, d’autres ré-implémentent en client-side), ce qui crée de l’ambiguïté.
@@ -159,6 +159,9 @@ Notes routes ERP :
 |---|---|---|---|
 | `/api/auth/[...nextauth]` | `GET`, `POST` | Non (endpoint auth) | NextAuth handler |
 | `/api/chatbot` | `POST` | Non | Chat IA (rate limit) |
+| `/api/users` | `GET`, `POST` | Oui (admin) | Liste & création comptes vendeurs |
+| `/api/users/[id]` | `PATCH`, `DELETE` | Oui (admin) | Édition/suppression compte vendeur |
+| `/api/users/me` | `PATCH` | Oui (admin) | Mise à jour compte admin (email/mdp) |
 | `/api/categories` | `GET` | Oui | Liste catégories ERP |
 | `/api/clients` | `GET`, `POST` | Oui (`POST` interdit vendeur) | CRUD client (partiel) |
 | `/api/clients/[id]` | `GET`, `PUT`, `PATCH` | Oui (`PUT/PATCH` interdit vendeur) | Détail & update client |
@@ -176,7 +179,7 @@ Notes routes ERP :
 | `/api/stock` | `GET` | Oui | Liste stock |
 | `/api/stock/alertes` | `GET` | Oui ou clé cron | Alertes + email |
 | `/api/stock/mouvement` | `POST` | Oui (interdit vendeur) | Entrée/sortie/ajustement |
-| `/api/stock/volumetrie` | `GET` | Non | Données volumétriques |
+| `/api/stock/volumetrie` | `GET` | Non | Données volumétriques (endpoint conservé, page ERP masquée) |
 | `/api/stats/dashboard` | `GET` | Oui | KPI dashboard |
 | `/api/stats/produits` | `GET` | Oui | Stats ventes par produit |
 | `/api/stats/ventes` | `GET` | Oui | Série ventes hebdo |
@@ -195,17 +198,16 @@ Paramètres principaux (constatés dans le code) :
 - Produits (création/édition/suppression logique)
 - Clients (liste + détail + CA)
 - Commandes (liste + détail + statuts + facture)
-- Volumétrie stock (analytics détaillée)
+- Paramètres admin (compte admin + gestion vendeurs)
 
 ### ⚠️ Modules partiels
 - Vente sur place : fonctionne mais logique paiement/source hétérogène, mapping fragile.
 - Livraisons : listing et update API ok, UI limitée.
 - Factures : endpoints/listing présents, mais la page `factures` mélange formats de réponse (`facture` vs `commande`) et lien PDF basé sur `id` potentiellement incorrect.
-- Stock : deux implémentations (`/erp/stock` server + `/erp/erp/stock` client), comportement non unifié.
+- Volumétrie : endpoint disponible mais écran volontairement masqué dans l'ERP.
 
 ### ❌ Modules manquants
-- Paramètres (UI vitrine de texte, pas de gestion réelle users/seuils/config).
-- Gestion utilisateurs ERP (CRUD rôles) côté UI.
+- Aucun module critique manquant identifié (hors améliorations UX et unification technique).
 
 ## Bugs connus
 1. **P1** — Routes ERP dupliquées (`/erp/...` et `/erp/erp/...`) avec comportements divergents, risque de pages incohérentes et maintenance difficile.
@@ -244,7 +246,7 @@ Enums :
 ## Rôles et permissions
 | Rôle | Accès | Pages autorisées |
 |---|---|---|
-| `ADMIN` | Full ERP | Toutes les routes `/erp/*` |
+| `ADMIN` | Full ERP + paramètres/admin users | Toutes les routes `/erp/*` |
 | `GERANT` | Identique ADMIN côté code actuel | Toutes les routes `/erp/*` |
 | `EMPLOYE` | Restreint comme vendeur dans `Sidebar` mais pas totalement bloqué API/middleware | Principalement `/erp/vente-place` dans UI |
 | `VENDEUR` | Redirection middleware hors `/erp/vente-place`; mutations critiques interdites (`403`) | `/erp/vente-place` |
@@ -313,3 +315,6 @@ npm run db:studio
 |---|---|---|---|
 | Admin | `admin@nuances.tn` | `admin123` | ERP complet |
 | Vendeur | `vendeur@nuances.tn` | `vendeur123` | Vente sur place uniquement |
+
+Numéro WhatsApp actuel :
+- `+216 96 557 557` (`NEXT_PUBLIC_WHATSAPP=21696557557`)

@@ -214,7 +214,7 @@ export default function VentePlacePage() {
   }
 
   const caisse = (
-    <div style={{ position: 'sticky', top: '76px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+    <div className="vente-caisse" style={{ position: 'sticky', top: '76px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
 
       {/* ── Panier ── */}
       <div style={{ background: '#FDFAF5', border: '1px solid #EDE5D4', borderRadius: '6px', overflow: 'hidden' }}>
@@ -276,7 +276,7 @@ export default function VentePlacePage() {
       </div>
 
       {/* ── Mode : Boutique / Livraison ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0' }}>
+      <div className="vente-mode-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0' }}>
         {[
           { val: 'boutique' as const,  label: '🏪 Boutique',  sub: 'Vente immédiate' },
           { val: 'livraison' as const, label: '🚚 Livraison',  sub: '+8 DT · formulaire' },
@@ -304,7 +304,7 @@ export default function VentePlacePage() {
           <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C4B090', marginBottom: '0.8rem' }}>
             Provenance *
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
+          <div className="vente-platform-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
             {[
               { val: 'INSTAGRAM', label: 'Instagram', icon: '📸', color: '#C13584' },
               { val: 'FACEBOOK',  label: 'Facebook',  icon: '👤', color: '#1877F2' },
@@ -364,7 +364,7 @@ export default function VentePlacePage() {
       {/* ── Paiement ── */}
       <div style={{ background: '#FDFAF5', border: '1px solid #EDE5D4', borderRadius: '6px', padding: '1rem 1.5rem' }}>
         <div style={{ fontSize: '0.6rem', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#C4B090', marginBottom: '0.8rem' }}>Mode de paiement</div>
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
+        <div className="vente-payment-grid" style={{ display: 'flex', gap: '0.4rem' }}>
           {(mode === 'boutique'
             ? [
                 { val: 'CASH',     label: '💵 Cash' },
@@ -418,7 +418,7 @@ export default function VentePlacePage() {
   )
 
   const inner = (
-    <div style={{
+    <div className="vente-layout" style={{
       display: 'grid',
       gridTemplateColumns: reversed ? '360px 1fr' : '1fr 360px',
       gap: '1.5rem',
@@ -498,6 +498,29 @@ export default function VentePlacePage() {
       }
     >
       {inner}
+      <style>{`
+        @media (max-width: 980px) {
+          .vente-layout {
+            grid-template-columns: 1fr !important;
+            gap: 1rem !important;
+          }
+          .vente-caisse {
+            position: static !important;
+            top: auto !important;
+          }
+        }
+        @media (max-width: 700px) {
+          .vente-mode-grid,
+          .vente-platform-grid,
+          .vente-payment-grid {
+            grid-template-columns: 1fr !important;
+            display: grid !important;
+          }
+          .vente-payment-grid button {
+            width: 100%;
+          }
+        }
+      `}</style>
     </ErpPage>
   )
 }

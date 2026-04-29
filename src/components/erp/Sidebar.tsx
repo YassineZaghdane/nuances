@@ -28,7 +28,6 @@ const MENU_COMPLET: MenuSection[] = [
     items: [
       { href: "/erp/produits", label: "Produits", icon: "▪" },
       { href: "/erp/stock", label: "Stock", icon: "▪" },
-      { href: "/erp/stock/volumetrie", label: "Stock kg/ml", icon: "▪" },
       { href: "/erp/exclusivites", label: "Exclusivités & Offres", icon: "▪" },
       { href: "/erp/livraisons", label: "Livraisons", icon: "▪" },
     ],
@@ -62,10 +61,21 @@ const MENU_VENDEUR: MenuSection[] = [
 export function Sidebar({ role = "ADMIN" }: { role?: string }) {
   const path = usePathname();
   const menu =
-    role === "VENDEUR" || role === "EMPLOYE" ? MENU_VENDEUR : MENU_COMPLET;
+    role === "VENDEUR" || role === "EMPLOYE"
+      ? MENU_VENDEUR
+      : MENU_COMPLET.map((group) => {
+          if (group.section !== "Principal") return group;
+          return {
+            ...group,
+            items: group.items.filter((item) =>
+              item.href === "/erp/parametres" ? role === "ADMIN" : true
+            ),
+          };
+        });
 
   return (
     <aside
+      className="erp-sidebar"
       style={{
         width: "220px",
         height: "100vh",
@@ -220,6 +230,17 @@ export function Sidebar({ role = "ADMIN" }: { role?: string }) {
           <span>→</span> Déconnexion
         </button>
       </div>
+      <style>{`
+        @media (max-width: 980px) {
+          .erp-sidebar {
+            width: 100% !important;
+            height: auto !important;
+            position: static !important;
+            border-right: none !important;
+            border-bottom: 1px solid #EDE5D4;
+          }
+        }
+      `}</style>
     </aside>
   );
 }

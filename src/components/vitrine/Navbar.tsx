@@ -85,7 +85,7 @@ function NavbarInner() {
 
   useEffect(() => {
     setMenuOpen(false)
-  }, [pathname])
+  }, [pathname, searchParams])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -340,6 +340,7 @@ function NavbarInner() {
                 <li key={item.label}>
                   <Link
                     href={item.href}
+                    onClick={() => setMenuOpen(false)}
                     style={linkStyle(
                       navLinkActive(pathname, searchParams, item.href)
                     )}

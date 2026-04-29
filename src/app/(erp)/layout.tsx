@@ -9,11 +9,23 @@ export default async function ErpLayout({ children }: { children: React.ReactNod
   const role = (session.user as { role?: string })?.role || 'EMPLOYE'
 
   return (
-    <div style={{ display:'flex', minHeight:'100vh', background:'#F8F5F0' }}>
+    <div className="erp-shell" style={{ display:'flex', minHeight:'100vh', background:'#F8F5F0' }}>
       <Sidebar role={role} />
-      <div style={{ marginLeft:'220px', flex:1, minHeight:'100vh' }}>
+      <div className="erp-content" style={{ marginLeft:'220px', flex:1, minHeight:'100vh' }}>
         {children}
       </div>
+      <style>{`
+        @media (max-width: 980px) {
+          .erp-shell {
+            display: block !important;
+          }
+          .erp-content {
+            margin-left: 0 !important;
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
