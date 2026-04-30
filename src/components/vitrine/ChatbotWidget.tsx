@@ -303,7 +303,7 @@ export function ChatbotWidget() {
               }}
             />
             <button
-              onClick={send}
+              onClick={() => { void send() }}
               disabled={loading || !input.trim()}
               style={{
                 padding: '0.55rem 0.85rem',
