@@ -40,6 +40,10 @@ const commandeSchema = z.object({
 
 export const dynamic = "force-dynamic";
 
+// Désactivé temporairement : la déduction automatique d'alcool par commande est stoppée.
+// La logique est conservée pour une réactivation future.
+const DEDUIRE_ALCOOL = false;
+
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -301,12 +305,14 @@ export async function POST(request: NextRequest) {
             });
           }
 
-          // Accumuler la déduction d'alcool
-          totalAlcoolMl += mlAlcool;
-          alcoolMouvements.push({
-            quantiteMl: mlAlcool,
-            raison: `Commande ${numero} — ${ligne.quantite}× ${ligne.taille}`,
-          });
+          // Accumuler la déduction d'alcool (désactivé temporairement)
+          if (DEDUIRE_ALCOOL) {
+            totalAlcoolMl += mlAlcool;
+            alcoolMouvements.push({
+              quantiteMl: mlAlcool,
+              raison: `Commande ${numero} — ${ligne.quantite}× ${ligne.taille}`,
+            });
+          }
 
           // Déduire les flacons vides correspondants
           const flacon = await tx.matierePremiere.findFirst({
@@ -331,7 +337,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Déduire l'alcool en une seule passe (matière première partagée)
-      if (totalAlcoolMl > 0) {
+      if (DEDUIRE_ALCOOL && totalAlcoolMl > 0) {
         const alcool = await tx.matierePremiere.findFirst({
           where: { nom: { contains: "lcool", mode: "insensitive" } },
         });
